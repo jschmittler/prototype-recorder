@@ -17,7 +17,10 @@
     "test:watch": "vitest",
     "build": "npm run typecheck",
     "lint": "eslint . || true",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dev": "npm run dev -w @ptw/web",
+    "build:web": "npm run build -w @ptw/web",
+    "start:web": "npm run start -w @ptw/web"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

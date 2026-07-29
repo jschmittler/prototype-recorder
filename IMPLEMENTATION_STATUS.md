@@ -17,17 +17,18 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ⬜ `@ptw/database`: `JobStore` interface + in-memory impl (moves here in P2)
 - ⬜ Keep the engine CLI working (N/A — engine lives in its own repo; we depend on it)
 
-## Phase 2 — Functional vertical slice (fake adapters)  ⬜
-- ⬜ `packages/database`: `JobStore` (in-memory) + `Queue` (in-process) abstractions
-- ⬜ `apps/web`: Next.js App Router, Tailwind, shared UI
-  - ⬜ Marketing/home page
-  - ⬜ Creation page (URL + brief + basic/advanced settings, consent copy)
-  - ⬜ Job progress page (SSE, stages, elapsed, cancel, technical details)
-  - ⬜ Result page (preview, metadata, download video/script, create another)
-  - ⬜ Failure page (friendly category, retry, edit, details)
-- ⬜ API/BFF: create/get/stream/cancel/retry/download (+ idempotency, ownership)
-- ⬜ `apps/worker`: consume queue, drive fake inspect→generate→validate→record→upload, emit progress
-- ⬜ E2E: home → create → live progress (deterministic fake) → result/failure
+## Phase 2 — Functional vertical slice (fake adapters)  ✅ (runnable)
+- ✅ In-memory `JobStore` + in-process runner + pub/sub (apps/web/lib/jobs.ts)
+- ✅ `apps/web`: Next.js App Router + Tailwind
+  - ✅ Marketing/home page (hero, 3 steps, benefits, FAQ, footer links)
+  - ✅ Creation page (URL + brief + basic/advanced settings, consent copy)
+  - ✅ Job progress page (SSE, staged checklist, elapsed, technical details)
+  - ✅ Result page (video preview, metadata, download video/script, create another)
+  - ✅ Failure page (friendly category, retry, edit, details)
+- ✅ API/BFF: create (idempotency), get, SSE stream, video + script download
+- ✅ In-process runner drives fake inspect→generate→validate→record→"upload", emits progress
+- 🟡 Separate `apps/worker` (BullMQ) — deferred to Phase 3; slice runs in-process
+- ⬜ Playwright e2e web tests (deterministic fake) — next
 
 ## Phase 3 — Real engine integration  ⬜
 - ⬜ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn`
