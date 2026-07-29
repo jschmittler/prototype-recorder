@@ -10,20 +10,28 @@ import type { Storage } from "./storage";
 export class S3Storage implements Storage {
   readonly kind = "s3" as const;
   private client: S3Client;
+  private signer: S3Client;
   private bucket: string;
   private ttl: number;
   constructor() {
     this.bucket = process.env.S3_BUCKET || "walkthroughs";
     this.ttl = Number(process.env.S3_SIGNED_TTL || 3600);
-    this.client = new S3Client({
-      region: process.env.S3_REGION || "us-east-1",
-      endpoint: process.env.S3_ENDPOINT,
-      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
-      credentials:
-        process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY
-          ? { accessKeyId: process.env.S3_ACCESS_KEY_ID, secretAccessKey: process.env.S3_SECRET_ACCESS_KEY }
-          : undefined,
-    });
+    const region = process.env.S3_REGION || "us-east-1";
+    const forcePathStyle = process.env.S3_FORCE_PATH_STYLE === "true";
+    const credentials =
+      process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY
+        ? { accessKeyId: process.env.S3_ACCESS_KEY_ID, secretAccessKey: process.env.S3_SECRET_ACCESS_KEY }
+        : undefined;
+    // Server-to-server ops use the internal endpoint (e.g. http://minio:9000).
+    this.client = new S3Client({ region, endpoint: process.env.S3_ENDPOINT, forcePathStyle, credentials });
+    // Presigned URLs are handed to the browser, which cannot resolve the
+    // internal compose hostname — sign against a browser-reachable endpoint.
+    // Falls back to the internal endpoint when no public one is configured.
+    const publicEndpoint = process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT;
+    this.signer =
+      publicEndpoint === process.env.S3_ENDPOINT
+        ? this.client
+        : new S3Client({ region, endpoint: publicEndpoint, forcePathStyle, credentials });
   }
   async putFile(key: string, srcPath: string, contentType: string): Promise<void> {
     await this.client.send(
@@ -35,7 +43,7 @@ export class S3Storage implements Storage {
   }
   async presignedGetUrl(key: string, filename: string, contentType: string): Promise<string> {
     return getSignedUrl(
-      this.client,
+      this.signer,
       new GetObjectCommand({
         Bucket: this.bucket,
         Key: key,

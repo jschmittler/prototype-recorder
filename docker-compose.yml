@@ -70,6 +70,8 @@ services:
       DATABASE_URL: postgresql://ptw:ptw@postgres:5432/ptw
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      # Browser-reachable endpoint for presigned download URLs (minio publishes 9000 to the host).
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
       S3_REGION: us-east-1
       S3_BUCKET: walkthroughs
       S3_ACCESS_KEY_ID: minioadmin
@@ -84,7 +86,12 @@ services:
 
   worker:
     build: { context: ., dockerfile: docker/worker.Dockerfile }
-    environment: *appenv
+    environment:
+      # Inherit the shared app env, then run the REAL recorder in the worker.
+      # (AI stays fake until ANTHROPIC_API_KEY is available — set AI_PROVIDER=anthropic then.)
+      <<: *appenv
+      EXECUTOR: local-process
+      ENGINE_DIR: /app/packages/recorder-cli
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_started }

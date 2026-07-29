@@ -38,8 +38,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ✅ `@ptw/core`: JobStore (memory + **Prisma/Postgres**), Queue (in-process + **BullMQ/Redis**), Storage (local + **S3/MinIO**, presigned downloads); shared pipeline; env-selected adapters (globalThis-pinned singletons)
 - ✅ Separate `apps/worker` (BullMQ consumer); web enqueues, worker/ in-process runs the same pipeline; SSE polls the store (works cross-process)
 - ✅ Prisma schema + `db:push`; Dockerfiles (web + worker) + full `docker-compose` (postgres/redis/minio/migrate/web/worker); `docs/deployment.md`
-- ⬜ Real recorder inside the worker image + container-per-job adapter; retention/cleanup cron (follow-ups)
-- ⚠️ Docker full-stack not run in this environment — validate with `docker compose up --build` (default local path verified end-to-end)
+- ✅ Real recorder inside the worker image: `worker.Dockerfile` installs Playwright Chromium + OS libs (`playwright install --with-deps chromium`); compose worker runs `EXECUTOR=local-process` + `ENGINE_DIR`. Verified in Docker against a live Figma Sites URL (real 7.56s 1440x900 VP8 WebM). ⬜ container-per-job adapter + retention/cleanup cron remain follow-ups.
+- ✅ Docker full-stack verified via `docker compose up --build` (2026-07-29): postgres healthy, redis/BullMQ consuming, MinIO bucket provisioned, migrate (`prisma db push`) applied, web + worker healthy; create→inspect→record→optimize→download flow exercised end-to-end cross-process. Presigned downloads use `S3_PUBLIC_ENDPOINT` (browser-reachable `localhost:9000`) rather than the internal `minio:9000`.
+- ⬜ Brief-driven scripts in Docker still need `ANTHROPIC_API_KEY` (currently `AI_PROVIDER=fake` → generic canned script). One-env-var flip, no rebuild.
 
 ## Phase 4 — Security & reliability  ⬜
 - ⬜ SSRF guard (DNS resolve + per-redirect recheck, private/metadata ranges)
@@ -57,8 +58,11 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 ## Verified so far
 - `npm install` + `npm run typecheck` + `npm test` (see README). Fake executor
   produces a previewable WebM when ffmpeg is present.
+- Full Docker stack (`docker compose up --build`): real recorder in the worker
+  records a live Figma Sites URL end-to-end; presigned downloads work (2026-07-29).
 
 ## Known limitations (current)
-- No UI/worker yet (Phase 2). No real AI/engine/storage yet (Phase 3).
-- DSL validator mirrors the engine grammar; to be unified with the engine parser
-  in Phase 3.
+- Brief-driven walkthroughs need `ANTHROPIC_API_KEY`; with `AI_PROVIDER=fake` the
+  script is a generic canned tour (real recording, generic journey).
+- DSL validator mirrors the engine grammar; to be unified with the engine parser.
+- Container-per-job isolation + retention/cleanup cron not yet implemented.
