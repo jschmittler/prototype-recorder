@@ -55,7 +55,7 @@ export async function runPipeline(jobId: string, deps: PipelineDeps): Promise<vo
       completedAt: now(),
       logTail: [...logTail],
     });
-    log("pipeline", `${jobId} FAILED (${category})`);
+    log("pipeline", `${jobId} FAILED (${category}): ${internal.slice(0, 300)}`);
   };
 
   const dims = viewportDims(job.settings);

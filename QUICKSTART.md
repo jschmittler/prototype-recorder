@@ -23,7 +23,7 @@ actual screen recording. Create `apps/web/.env` (git-ignored):
 ```bash
 # apps/web/.env
 EXECUTOR=local-process
-ENGINE_DIR=/absolute/path/to/figma-walkthrough   # the engine repo
+ENGINE_DIR=/absolute/path/to/prototype-recorder-cli   # the engine repo
 AI_PROVIDER=fake                                  # builds a script from real inspection
 ```
 
@@ -49,7 +49,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ## Notes
 
 - **Engine repo:** the real recorder shells out to the published
-  [figma-walkthrough](https://github.com/jschmittler/figma-walkthrough) engine,
+  [prototype-recorder-cli](https://github.com/jschmittler/prototype-recorder) engine,
   which brings its own Chromium/FFmpeg. Clone it and set `ENGINE_DIR` to it.
 - **Auth-gated prototypes** aren't supported in the hosted flow — use published
   `figma.site` links.

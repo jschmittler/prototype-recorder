@@ -1,6 +1,6 @@
 # Architecture
 
-Prototype Walkthrough is a SaaS front-end around the **figma-walkthrough**
+Prototype Walkthrough is a SaaS front-end around the **prototype-recorder-cli**
 recording engine. A non-technical user submits a published prototype URL and a
 plain-English brief; the system inspects the prototype, uses an Anthropic model
 to author a script in the engine's Markdown DSL, deterministically validates it,
@@ -8,12 +8,12 @@ records it headlessly, and returns a downloadable WebM.
 
 ## Repository strategy (ADR-001)
 
-**Decision:** a **separate repository** (`prototype-walkthrough`) that consumes
-the engine (`figma-walkthrough`) as a dependency, rather than restructuring the
+**Decision:** a **separate repository** (`prototype-recorder`) that consumes
+the engine (`prototype-recorder-cli`) as a dependency, rather than restructuring the
 engine repo into a monorepo.
 
 **Why:** the engine is already published to npm and pushed to
-`github.com/jschmittler/figma-walkthrough`; keeping it small, stable, and
+`github.com/jschmittler/prototype-recorder`; keeping it small, stable, and
 independently versioned avoids churning a shipped artifact. This app evolves on
 its own cadence and pins the engine by version (or a local `file:`/workspace
 link during development).

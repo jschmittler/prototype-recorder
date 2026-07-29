@@ -1,6 +1,6 @@
 /**
  * Versioned prompt for turning a plain-English brief + prototype inspection
- * into the figma-walkthrough Markdown DSL. Kept as a dedicated file (not an
+ * into the prototype-recorder-cli Markdown DSL. Kept as a dedicated file (not an
  * inline string in application code) so it can be reviewed and versioned.
  */
 import type { GenerateScriptInput } from "./provider";

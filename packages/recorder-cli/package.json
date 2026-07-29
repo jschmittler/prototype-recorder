@@ -1,0 +1,66 @@
+{
+  "name": "prototype-recorder-cli",
+  "version": "1.0.0",
+  "description": "Record portfolio-quality automated walkthroughs of remotely hosted Figma prototypes (visible cursor, smooth scrolling) and export high-quality WebM — driven by a simple script.md.",
+  "type": "module",
+  "bin": {
+    "prototype-recorder-cli": "bin/prototype-recorder-cli.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jschmittler/prototype-recorder.git"
+  },
+  "homepage": "https://github.com/jschmittler/prototype-recorder#readme",
+  "bugs": {
+    "url": "https://github.com/jschmittler/prototype-recorder/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "scripts/*.md",
+    "script.template.md",
+    "playwright.config.ts",
+    "tsconfig.json",
+    "README.md",
+    "PLAYBOOK.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "cli": "tsx src/cli.ts",
+    "setup": "tsx src/cli.ts setup",
+    "auth:setup": "tsx src/setup-auth.ts",
+    "walkthrough:inspect": "tsx src/inspect-prototype.ts",
+    "walkthrough:record": "tsx src/record-walkthrough.ts",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node bin/postinstall.mjs"
+  },
+  "keywords": [
+    "figma",
+    "playwright",
+    "walkthrough",
+    "screen-recording",
+    "webm",
+    "prototype",
+    "demo",
+    "automation"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.48.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

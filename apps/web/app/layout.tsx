@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Turn a prototype into a polished walkthrough video.",
 };
 
-const GITHUB = "https://github.com/jschmittler/figma-walkthrough";
+const GITHUB = "https://github.com/jschmittler/prototype-recorder";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

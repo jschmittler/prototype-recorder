@@ -1,5 +1,5 @@
 /**
- * The walkthrough DSL grammar, mirrored from the figma-walkthrough engine
+ * The walkthrough DSL grammar, mirrored from the prototype-recorder-cli engine
  * (src/journey/steps.ts + parse.ts). This is the deterministic contract the
  * validator enforces before any generated script is executed.
  *

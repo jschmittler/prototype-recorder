@@ -1,5 +1,5 @@
 # Worker (async job consumer). FFmpeg is present for the fake recorder; for the
-# REAL recorder, add the figma-walkthrough engine + its Chromium and set
+# REAL recorder, add the prototype-recorder-cli engine + its Chromium and set
 # EXECUTOR=local-process + ENGINE_DIR (see docs/deployment.md).
 FROM node:20-slim
 WORKDIR /app

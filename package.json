@@ -1,9 +1,9 @@
 {
-  "name": "prototype-walkthrough",
+  "name": "prototype-recorder",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Prototype Walkthrough \u2014 a SaaS app that turns a Figma prototype URL + plain-English brief into a polished walkthrough video, built on the figma-walkthrough recording engine.",
+  "description": "Prototype Walkthrough — a SaaS app that turns a Figma prototype URL + plain-English brief into a polished walkthrough video, built on the prototype-recorder-cli recording engine.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -18,9 +18,9 @@
     "build": "npm run typecheck",
     "lint": "eslint . || true",
     "format": "prettier --write .",
-    "dev": "npm run dev -w @ptw/web",
-    "build:web": "npm run build -w @ptw/web",
-    "start:web": "npm run start -w @ptw/web",
+    "dev": "npm run dev -w prototype-recorder-web",
+    "build:web": "npm run build -w prototype-recorder-web",
+    "start:web": "npm run start -w prototype-recorder-web",
     "worker": "npm run start -w @ptw/worker",
     "db:generate": "npm run db:generate -w @ptw/core",
     "db:push": "npm run db:push -w @ptw/core",

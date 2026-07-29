@@ -1,6 +1,6 @@
 /**
  * @ptw/engine-adapter — the boundary between the job worker and the actual
- * recording engine (figma-walkthrough).
+ * recording engine (prototype-recorder-cli).
  *
  * `WalkthroughExecutor` is the seam the spec calls for: a local-process adapter
  * is used first and a container-per-job adapter can be added later without
@@ -11,6 +11,7 @@
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 /* --------------------------------------------------------------------- types */
@@ -237,8 +238,26 @@ function synthesizeWebm(
  */
 export async function getExecutor(): Promise<WalkthroughExecutor> {
   if ((process.env.EXECUTOR ?? "fake") === "local-process") {
-    const engineDir = process.env.ENGINE_DIR;
-    if (!engineDir) throw new ExecutorError("ENGINE_DIR is required when EXECUTOR=local-process.", "unknown");
+    let engineDir = process.env.ENGINE_DIR;
+    if (!engineDir) {
+      const candidates = [
+        path.resolve(process.cwd(), "../../packages/recorder-cli"), // next in apps/web, worker in apps/worker
+        path.resolve(process.cwd(), "packages/recorder-cli"), // run from repo root
+      ];
+      try {
+        const req = createRequire(import.meta.url);
+        candidates.push(path.dirname(req.resolve("prototype-recorder-cli/package.json")));
+      } catch {
+        /* require.resolve may be unavailable under bundlers */
+      }
+      engineDir = candidates.find((d) => fs.existsSync(path.join(d, "bin", "prototype-recorder-cli.mjs")));
+      if (!engineDir) {
+        throw new ExecutorError(
+          `Could not locate prototype-recorder-cli; set ENGINE_DIR. Tried: ${candidates.join(", ")}`,
+          "unknown"
+        );
+      }
+    }
     const { LocalProcessExecutor } = await import("./local");
     return new LocalProcessExecutor({ engineDir });
   }

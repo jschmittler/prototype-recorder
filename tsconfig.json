@@ -1,5 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["packages/*/src/**/*.ts"],
-  "exclude": ["**/node_modules", "**/dist", "**/.next"]
+  "include": [
+    "packages/*/src/**/*.ts"
+  ],
+  "exclude": [
+    "**/.next",
+    "**/dist",
+    "**/node_modules",
+    "packages/recorder-cli/**"
+  ]
 }

@@ -1,6 +1,6 @@
 /**
  * LocalProcessExecutor — the real recorder adapter. It runs the external
- * figma-walkthrough engine as a child process (its own Chromium/Playwright/
+ * prototype-recorder-cli engine as a child process (its own Chromium/Playwright/
  * FFmpeg install), so this repo stays free of heavy browser dependencies.
  *
  * - `inspect` runs the engine's `inspect` command and parses its report.
@@ -26,7 +26,7 @@ import {
 } from "./index";
 
 export interface LocalExecutorOptions {
-  /** Path to a figma-walkthrough checkout or install (contains bin/). */
+  /** Path to a prototype-recorder-cli checkout or install (contains bin/). */
   engineDir: string;
   nodeBin?: string;
 }
@@ -53,7 +53,7 @@ export class LocalProcessExecutor implements WalkthroughExecutor {
   private nodeBin: string;
 
   constructor(opts: LocalExecutorOptions) {
-    this.enginePath = path.join(opts.engineDir, "bin", "figma-walkthrough.mjs");
+    this.enginePath = path.join(opts.engineDir, "bin", "prototype-recorder-cli.mjs");
     this.nodeBin = opts.nodeBin ?? process.execPath;
     if (!fs.existsSync(this.enginePath)) {
       throw new ExecutorError(`Engine not found at ${this.enginePath} (set ENGINE_DIR).`, "unknown");

@@ -11,4 +11,4 @@ RUN npm run build:web
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
-CMD ["npm", "run", "start", "-w", "@ptw/web"]
+CMD ["npm", "run", "start", "-w", "prototype-recorder-web"]

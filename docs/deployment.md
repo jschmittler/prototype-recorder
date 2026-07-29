@@ -22,7 +22,7 @@ Production selects the real adapters:
 JOB_STORE=postgres   QUEUE_DRIVER=redis   STORAGE_DRIVER=s3
 DATABASE_URL=...     REDIS_URL=...         S3_ENDPOINT/REGION/BUCKET/keys...
 AI_PROVIDER=anthropic  ANTHROPIC_API_KEY=...   # or fake
-EXECUTOR=local-process ENGINE_DIR=/path/to/figma-walkthrough   # or fake
+EXECUTOR=local-process ENGINE_DIR=/path/to/prototype-recorder-cli   # or fake
 MAX_CONCURRENT_JOBS=2  JOB_RETENTION_HOURS=72  URL_ALLOWLIST=
 ```
 
@@ -49,7 +49,7 @@ or key; flip `AI_PROVIDER`/`EXECUTOR` (and provide the key / engine) for real ou
 
 ## Real recording in the worker
 
-The worker shells out to the figma-walkthrough engine (its own Chromium/FFmpeg).
+The worker shells out to the prototype-recorder-cli engine (its own Chromium/FFmpeg).
 For real recordings in a container, add the engine to the worker image (clone +
 `npm ci` + `npx playwright install chromium`) and set `EXECUTOR=local-process` +
 `ENGINE_DIR`. A container-per-job execution adapter is the recommended hardening

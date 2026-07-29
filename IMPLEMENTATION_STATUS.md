@@ -31,7 +31,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ⬜ Playwright e2e web tests (deterministic fake) — next
 
 ## Phase 3 — Real engine integration  ✅
-- ✅ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn` (env-selected via `EXECUTOR=local-process` + `ENGINE_DIR`); real inspection report parsing; progress streaming, timeout, cancellation, scrubbed logs; verified against a live prototype (real 14s WebM)
+- ✅ `LocalProcessExecutor` running prototype-recorder-cli `inspect`/`record` via `spawn` (env-selected via `EXECUTOR=local-process` + `ENGINE_DIR`); real inspection report parsing; progress streaming, timeout, cancellation, scrubbed logs; verified against a live prototype (real 14s WebM)
 - ⬜ Unify validator with the engine's real DSL parser (single source of truth)
 - ✅ `AnthropicProvider` (server key, injectable client) + versioned prompt (`prompt.ts`, walkthrough-v1); env-selected via `AI_PROVIDER=anthropic`; default model `claude-opus-4-8` (adaptive thinking); defensive output parsing; mock-tested (6 tests). Live run needs `ANTHROPIC_API_KEY`.
 - ✅ Turnkey local run: `apps/web/.env` (`EXECUTOR=local-process` + `ENGINE_DIR`) makes `npm run dev` record real prototypes with no API key; verified end-to-end via the browser flow (real 13.9s 1440x900 WebM). See `QUICKSTART.md`.

@@ -5,7 +5,7 @@ prototype URL, describe the journey in plain English, and get a downloadable
 video — no Node, Playwright, Chromium, or FFmpeg to install on your machine
 (all execution happens server-side).
 
-Built on the [figma-walkthrough](https://github.com/jschmittler/figma-walkthrough)
+Built on the [prototype-recorder-cli](https://github.com/jschmittler/prototype-recorder)
 recording engine.
 
 > **Status:** Phase 1 (foundation) — shared contracts, adapter interfaces with
@@ -55,7 +55,7 @@ docker compose up -d postgres redis minio
 
 - `docs/architecture.md` — system design + repo-strategy ADR
 - `IMPLEMENTATION_STATUS.md` — phase-by-phase checklist
-- Engine docs: figma-walkthrough `README.md` / `PLAYBOOK.md`
+- Engine docs: prototype-recorder-cli `README.md` / `PLAYBOOK.md`
 
 ## Security & privacy (summary)
 

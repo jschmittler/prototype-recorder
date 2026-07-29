@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Auth — NEVER commit the storage state
+auth/figma-storage-state.json
+auth/*.json
+
+# Recording artifacts
+output/
+test-results/
+!output/.gitkeep
+
+# npm
+*.tgz
+.npmrc
+
+# OS / editor
+.DS_Store
+*.log
