@@ -24,6 +24,8 @@ docker/     Dockerfiles (web + worker)                          [coming]
 
 ## Local development
 
+> **Just want to run it?** See **`QUICKSTART.md`** — `npm run dev` (add `apps/web/.env` for real recordings).
+
 Requires Node ≥ 18. The vertical slice runs on **fake adapters + in-memory
 infra**, so no database/queue/storage is needed to start.
 
