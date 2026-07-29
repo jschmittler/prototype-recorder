@@ -244,6 +244,8 @@ export interface Job {
   completedAt?: string;
   expiresAt?: string;
   retryCount: number;
+  /** Bounded tail of recent scrubbed progress log lines. */
+  logTail?: string[];
 }
 
 /** The subset of a Job that is safe to send to the browser. */

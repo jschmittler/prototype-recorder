@@ -1,18 +1,23 @@
-import fs from "node:fs";
 import { NextResponse } from "next/server";
-import { jobArtifactPath } from "@/lib/jobs";
+import { artifactRef, getStorage } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const p = jobArtifactPath(id, "script");
-  if (!p || !fs.existsSync(p)) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const text = fs.readFileSync(p, "utf8");
-  return new NextResponse(text, {
+  const ref = await artifactRef(id, "script");
+  if (!ref) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const storage = await getStorage();
+  if (storage.kind === "s3") {
+    return NextResponse.redirect(await storage.presignedGetUrl(ref.key, ref.filename, ref.contentType), 302);
+  }
+  const bytes = await storage.getBytes(ref.key);
+  if (!bytes) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return new NextResponse(new Uint8Array(bytes.data), {
     headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${id}.md"`,
+      "Content-Type": ref.contentType,
+      "Content-Disposition": `attachment; filename="${ref.filename}"`,
       "Cache-Control": "private, no-store",
     },
   });

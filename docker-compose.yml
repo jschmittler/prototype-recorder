@@ -1,10 +1,10 @@
-# Local infrastructure for Prototype Walkthrough.
-# The vertical slice does NOT require these (it defaults to in-memory adapters);
-# bring them up when you switch QUEUE_DRIVER=redis / JOB_STORE=postgres /
-# STORAGE_DRIVER=s3, or to exercise the full stack.
+# Full local stack for Prototype Walkthrough.
+#   Infra only:   docker compose up -d postgres redis minio
+#   Whole stack:  docker compose up --build
 #
-#   docker compose up -d postgres redis minio
-#
+# The stack runs with the REAL product adapters (Postgres + Redis/BullMQ + S3),
+# and the FAKE recorder/AI by default so it works without the engine or a key.
+# Set AI_PROVIDER=anthropic (+ ANTHROPIC_API_KEY) and wire the engine for real output.
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,10 +12,8 @@ services:
       POSTGRES_USER: ptw
       POSTGRES_PASSWORD: ptw
       POSTGRES_DB: ptw
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg-data:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    volumes: ["pg-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ptw"]
       interval: 5s
@@ -24,8 +22,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    ports: ["6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -38,30 +35,63 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
 
-  # One-shot: create the private bucket used for artifacts.
   minio-init:
     image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_started
+    depends_on: { minio: { condition: service_started } }
     entrypoint: >
       /bin/sh -c "
       until (mc alias set local http://minio:9000 minioadmin minioadmin) do sleep 1; done;
       mc mb --ignore-existing local/walkthroughs;
       mc anonymous set none local/walkthroughs;
-      echo 'bucket ready';
-      "
+      echo 'bucket ready'; "
+
+  # One-shot: create the Job table (prisma db push) before web/worker start.
+  migrate:
+    build: { context: ., dockerfile: docker/worker.Dockerfile }
+    command: ["npm", "run", "db:push", "-w", "@ptw/core"]
+    environment:
+      DATABASE_URL: postgresql://ptw:ptw@postgres:5432/ptw
+    depends_on: { postgres: { condition: service_healthy } }
+
+  web:
+    build: { context: ., dockerfile: docker/web.Dockerfile }
+    ports: ["3000:3000"]
+    environment: &appenv
+      NODE_ENV: production
+      APP_MODE: demo
+      JOB_STORE: postgres
+      QUEUE_DRIVER: redis
+      STORAGE_DRIVER: s3
+      AI_PROVIDER: fake
+      EXECUTOR: fake
+      DATABASE_URL: postgresql://ptw:ptw@postgres:5432/ptw
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: walkthroughs
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_FORCE_PATH_STYLE: "true"
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      minio-init: { condition: service_completed_successfully }
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    build: { context: ., dockerfile: docker/worker.Dockerfile }
+    environment: *appenv
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      minio-init: { condition: service_completed_successfully }
+      migrate: { condition: service_completed_successfully }
+    deploy:
+      replicas: 1
 
 volumes:
   pg-data:

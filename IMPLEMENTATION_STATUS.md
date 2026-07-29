@@ -30,12 +30,16 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - 🟡 Separate `apps/worker` (BullMQ) — deferred to Phase 3; slice runs in-process
 - ⬜ Playwright e2e web tests (deterministic fake) — next
 
-## Phase 3 — Real engine integration  🟡
+## Phase 3 — Real engine integration  ✅
 - ✅ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn` (env-selected via `EXECUTOR=local-process` + `ENGINE_DIR`); real inspection report parsing; progress streaming, timeout, cancellation, scrubbed logs; verified against a live prototype (real 14s WebM)
 - ⬜ Unify validator with the engine's real DSL parser (single source of truth)
 - ✅ `AnthropicProvider` (server key, injectable client) + versioned prompt (`prompt.ts`, walkthrough-v1); env-selected via `AI_PROVIDER=anthropic`; default model `claude-opus-4-8` (adaptive thinking); defensive output parsing; mock-tested (6 tests). Live run needs `ANTHROPIC_API_KEY`.
 - ✅ Turnkey local run: `apps/web/.env` (`EXECUTOR=local-process` + `ENGINE_DIR`) makes `npm run dev` record real prototypes with no API key; verified end-to-end via the browser flow (real 13.9s 1440x900 WebM). See `QUICKSTART.md`.
-- ⬜ Prisma + Postgres `JobStore`; BullMQ + Redis queue; S3/MinIO storage with signed URLs
+- ✅ `@ptw/core`: JobStore (memory + **Prisma/Postgres**), Queue (in-process + **BullMQ/Redis**), Storage (local + **S3/MinIO**, presigned downloads); shared pipeline; env-selected adapters (globalThis-pinned singletons)
+- ✅ Separate `apps/worker` (BullMQ consumer); web enqueues, worker/ in-process runs the same pipeline; SSE polls the store (works cross-process)
+- ✅ Prisma schema + `db:push`; Dockerfiles (web + worker) + full `docker-compose` (postgres/redis/minio/migrate/web/worker); `docs/deployment.md`
+- ⬜ Real recorder inside the worker image + container-per-job adapter; retention/cleanup cron (follow-ups)
+- ⚠️ Docker full-stack not run in this environment — validate with `docker compose up --build` (default local path verified end-to-end)
 
 ## Phase 4 — Security & reliability  ⬜
 - ⬜ SSRF guard (DNS resolve + per-redirect recheck, private/metadata ranges)
