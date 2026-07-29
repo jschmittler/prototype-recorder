@@ -30,8 +30,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - 🟡 Separate `apps/worker` (BullMQ) — deferred to Phase 3; slice runs in-process
 - ⬜ Playwright e2e web tests (deterministic fake) — next
 
-## Phase 3 — Real engine integration  ⬜
-- ⬜ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn`
+## Phase 3 — Real engine integration  🟡
+- ✅ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn` (env-selected via `EXECUTOR=local-process` + `ENGINE_DIR`); real inspection report parsing; progress streaming, timeout, cancellation, scrubbed logs; verified against a live prototype (real 14s WebM)
 - ⬜ Unify validator with the engine's real DSL parser (single source of truth)
 - ⬜ `AnthropicProvider` (server key) + versioned prompt file; verify model id/API via the claude-api reference
 - ⬜ Prisma + Postgres `JobStore`; BullMQ + Redis queue; S3/MinIO storage with signed URLs

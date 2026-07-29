@@ -18,6 +18,7 @@ import {
   STAGES,
   toPublicJob,
   viewportDims,
+  PACING,
   targetSeconds,
   sanitizeFilename,
   type CreateJobInput,
@@ -34,7 +35,7 @@ import {
   ScriptGenerationError,
   type ValidateOptions,
 } from "@ptw/script-generator";
-import { FakeExecutor, ExecutorError } from "@ptw/engine-adapter";
+import { getExecutor, ExecutorError } from "@ptw/engine-adapter";
 import { checkUrl } from "./ssrf";
 
 /* --------------------------------------------------- process-wide singletons */
@@ -173,7 +174,7 @@ async function runJob(id: string): Promise<void> {
   if (!job) return;
 
   const ai = new FakeAIProvider();
-  const executor = new FakeExecutor({ stepMs: 500 });
+  const executor = await getExecutor();
   const dims = viewportDims(job.settings);
   const workDir = path.join(STORAGE_ROOT, id);
   fs.mkdirSync(workDir, { recursive: true });
@@ -185,7 +186,7 @@ async function runJob(id: string): Promise<void> {
 
     // Inspect
     setStatus(job, "INSPECTING");
-    const inspection = await executor.inspect({ url: job.url, viewport: dims });
+    const inspection = await executor.inspect({ url: job.url, viewport: dims, workDir, jobId: id });
 
     // Generate + validate + repair
     setStatus(job, "GENERATING_SCRIPT");
@@ -239,7 +240,8 @@ async function runJob(id: string): Promise<void> {
       outputBaseName: baseName,
       includeOptimizedCopy: job.settings.includeOptimizedCopy,
       keepDiagnostics: job.settings.keepDiagnostics,
-      pace: undefined,
+      pace: PACING[job.settings.pacing].pace,
+      jobId: id,
       onProgress: (e) => {
         if (e.phase === "optimizing" && job.status !== "OPTIMIZING") setStatus(job, "OPTIMIZING");
         if (e.log) store.bus.emit(job.id, { type: "log", line: e.log, at: now() } satisfies JobEvent);

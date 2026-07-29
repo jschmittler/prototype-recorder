@@ -40,6 +40,9 @@ export interface InspectionResult {
 export interface InspectInput {
   url: string;
   viewport: { width: number; height: number };
+  /** Isolated working directory (the engine writes its report here). */
+  workDir?: string;
+  jobId?: string;
   timeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -55,6 +58,7 @@ export interface RecordInput {
   includeOptimizedCopy: boolean;
   keepDiagnostics: boolean;
   pace?: number;
+  jobId?: string;
   timeoutMs?: number;
   signal?: AbortSignal;
   onProgress?: (evt: ExecutorProgress) => void;
@@ -220,4 +224,23 @@ function synthesizeWebm(
   } catch {
     return false;
   }
+}
+
+
+/* ------------------------------------------------------------- executor factory */
+
+/**
+ * Select the executor from the environment:
+ *   EXECUTOR=local-process  → real engine (requires ENGINE_DIR)
+ *   otherwise               → FakeExecutor (default; used by the slice + tests)
+ * The local executor is imported lazily to avoid a module cycle.
+ */
+export async function getExecutor(): Promise<WalkthroughExecutor> {
+  if ((process.env.EXECUTOR ?? "fake") === "local-process") {
+    const engineDir = process.env.ENGINE_DIR;
+    if (!engineDir) throw new ExecutorError("ENGINE_DIR is required when EXECUTOR=local-process.", "unknown");
+    const { LocalProcessExecutor } = await import("./local");
+    return new LocalProcessExecutor({ engineDir });
+  }
+  return new FakeExecutor({ stepMs: 500 });
 }
