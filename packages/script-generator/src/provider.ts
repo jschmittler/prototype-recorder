@@ -85,3 +85,20 @@ export class FakeAIProvider implements AIProvider {
     return { script, tokensIn: 0, tokensOut: script.length };
   }
 }
+
+/**
+ * Select the AI provider from the environment:
+ *   AI_PROVIDER=anthropic  -> real Anthropic (requires ANTHROPIC_API_KEY)
+ *   otherwise              -> FakeAIProvider (default; slice + tests)
+ * AnthropicProvider is imported lazily so the SDK isn't loaded on the fake path.
+ */
+export async function getAIProvider(): Promise<AIProvider> {
+  if ((process.env.AI_PROVIDER ?? "fake") === "anthropic") {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured (required for AI_PROVIDER=anthropic).");
+    }
+    const { AnthropicProvider } = await import("./anthropic");
+    return new AnthropicProvider();
+  }
+  return new FakeAIProvider();
+}

@@ -30,7 +30,7 @@ import {
   LIMITS,
 } from "@ptw/job-contracts";
 import {
-  FakeAIProvider,
+  getAIProvider,
   generateValidatedScript,
   ScriptGenerationError,
   type ValidateOptions,
@@ -173,7 +173,7 @@ async function runJob(id: string): Promise<void> {
   const job = store.jobs.get(id);
   if (!job) return;
 
-  const ai = new FakeAIProvider();
+  const ai = await getAIProvider();
   const executor = await getExecutor();
   const dims = viewportDims(job.settings);
   const workDir = path.join(STORAGE_ROOT, id);
@@ -263,6 +263,7 @@ async function runJob(id: string): Promise<void> {
     store.jobs.set(job.id, job);
     store.bus.emit(job.id, { type: "done", job: toPublicJob(job), at: now() } satisfies JobEvent);
   } catch (err) {
+    if (err instanceof Error && /ANTHROPIC_API_KEY|not configured/i.test(err.message)) return fail(job, "SERVICE_CONFIG", err.message);
     if (err instanceof ScriptGenerationError) return fail(job, "INVALID_SCRIPT", err.validationErrors.join("; "));
     if (err instanceof ExecutorError) {
       const map: Record<string, ErrorCategory> = {

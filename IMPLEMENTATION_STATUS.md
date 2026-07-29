@@ -33,7 +33,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 ## Phase 3 — Real engine integration  🟡
 - ✅ `LocalProcessExecutor` running figma-walkthrough `inspect`/`record` via `spawn` (env-selected via `EXECUTOR=local-process` + `ENGINE_DIR`); real inspection report parsing; progress streaming, timeout, cancellation, scrubbed logs; verified against a live prototype (real 14s WebM)
 - ⬜ Unify validator with the engine's real DSL parser (single source of truth)
-- ⬜ `AnthropicProvider` (server key) + versioned prompt file; verify model id/API via the claude-api reference
+- ✅ `AnthropicProvider` (server key, injectable client) + versioned prompt (`prompt.ts`, walkthrough-v1); env-selected via `AI_PROVIDER=anthropic`; default model `claude-opus-4-8` (adaptive thinking); defensive output parsing; mock-tested (6 tests). Live run needs `ANTHROPIC_API_KEY`.
 - ⬜ Prisma + Postgres `JobStore`; BullMQ + Redis queue; S3/MinIO storage with signed URLs
 
 ## Phase 4 — Security & reliability  ⬜
