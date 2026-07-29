@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# job artifacts / local storage
+/tmp-jobs/
+/storage/
+*.webm
+
+# os / editor
+.DS_Store
+*.log
