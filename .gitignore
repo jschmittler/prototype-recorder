@@ -1,6 +1,9 @@
 node_modules/
 dist/
-# hostinger-dist/ is built during deploy — do NOT gitignore it (Hostinger skips ignored output paths).
+# Do not gitignore hostinger-dist/ itself — Hostinger may skip ignored deploy output.
+# Ignore build artifacts locally; only .gitkeep is tracked.
+hostinger-dist/*
+!hostinger-dist/.gitkeep
 server.js
 storage/
 .next/
