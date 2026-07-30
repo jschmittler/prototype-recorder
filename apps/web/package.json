@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "lsof -ti:3000,3001,3002 2>/dev/null | xargs kill -9 2>/dev/null; rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit"

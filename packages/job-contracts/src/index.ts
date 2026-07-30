@@ -261,6 +261,7 @@ export interface PublicJob {
   error?: { title: string; explanation: string; nextStep: string };
   metrics: Omit<JobMetrics, "modelTokensIn" | "modelTokensOut">;
   hasVideo: boolean;
+  hasOptimizedVideo: boolean;
   hasScript: boolean;
   createdAt: string;
   completedAt?: string;
@@ -287,6 +288,7 @@ export function toPublicJob(job: Job): PublicJob {
       stageDurationsMs: job.metrics.stageDurationsMs,
     },
     hasVideo: !!job.artifacts.videoKey,
+    hasOptimizedVideo: !!job.artifacts.optimizedVideoKey,
     hasScript: !!job.artifacts.scriptKey,
     createdAt: job.createdAt,
     completedAt: job.completedAt,

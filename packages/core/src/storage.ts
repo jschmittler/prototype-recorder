@@ -13,6 +13,8 @@ export interface Storage {
   putFile(key: string, srcPath: string, contentType: string): Promise<void>;
   /** Local only: read the bytes back (web streams them). */
   getBytes(key: string): Promise<{ data: Buffer; contentType: string } | null>;
+  /** Read artifact text (local disk or server-side S3 fetch). */
+  getText(key: string): Promise<string | null>;
   /** S3 only: a time-limited download URL (web 302-redirects to it). */
   presignedGetUrl(key: string, filename: string, contentType: string): Promise<string>;
   delete(key: string): Promise<void>;
@@ -38,6 +40,10 @@ export class LocalStorage implements Storage {
     const dest = this.full(key);
     if (!fs.existsSync(dest)) return null;
     return { data: fs.readFileSync(dest), contentType: CT.get(key) || "application/octet-stream" };
+  }
+  async getText(key: string): Promise<string | null> {
+    const bytes = await this.getBytes(key);
+    return bytes ? bytes.data.toString("utf-8") : null;
   }
   async presignedGetUrl(): Promise<string> {
     throw new Error("presignedGetUrl is not supported by LocalStorage; stream getBytes instead.");

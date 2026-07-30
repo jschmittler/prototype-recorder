@@ -1,9 +1,10 @@
 import Link from "next/link";
+import HeroStoryGraphicIsland from "@/components/HeroStoryGraphicIsland";
 
 const STEPS = [
   { n: "1", t: "Paste your prototype", d: "Drop in a published Figma prototype URL." },
   { n: "2", t: "Describe the journey", d: "Say what the walkthrough should show, in plain English." },
-  { n: "3", t: "Download the video", d: "We record it with a smooth cursor and hand you a WebM." },
+  { n: "3", t: "Export and share", d: "Download WebM, review the generated script, copy a link, or embed the video." },
 ];
 
 const BENEFITS = [
@@ -42,13 +43,8 @@ export default function Home() {
             </a>
           </div>
 
-          <div className="mt-14 rounded-2xl border border-black/5 bg-white shadow-soft p-3">
-            <div className="aspect-video rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 grid place-items-center text-white/80">
-              <div className="text-center">
-                <div className="text-5xl">▶</div>
-                <p className="mt-2 text-sm text-white/60">Your walkthrough preview appears here</p>
-              </div>
-            </div>
+          <div className="mt-14">
+            <HeroStoryGraphicIsland />
           </div>
         </div>
       </section>

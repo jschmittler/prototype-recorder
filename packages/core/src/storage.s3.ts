@@ -41,6 +41,14 @@ export class S3Storage implements Storage {
   async getBytes(): Promise<null> {
     return null; // web redirects to a presigned URL instead
   }
+  async getText(key: string): Promise<string | null> {
+    try {
+      const res = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+      return (await res.Body?.transformToString("utf-8")) ?? null;
+    } catch {
+      return null;
+    }
+  }
   async presignedGetUrl(key: string, filename: string, contentType: string): Promise<string> {
     return getSignedUrl(
       this.signer,

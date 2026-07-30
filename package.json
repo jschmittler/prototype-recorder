@@ -19,6 +19,7 @@
     "lint": "eslint . || true",
     "format": "prettier --write .",
     "dev": "npm run dev -w prototype-recorder-web",
+    "dev:clean": "npm run dev:clean -w prototype-recorder-web",
     "build:web": "npm run build -w prototype-recorder-web",
     "start:web": "npm run start -w prototype-recorder-web",
     "worker": "npm run start -w @ptw/worker",

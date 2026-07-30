@@ -3,12 +3,20 @@ import { artifactRef, getStorage } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+  const preview = new URL(req.url).searchParams.get("preview") === "1";
   const ref = await artifactRef(id, "script");
   if (!ref) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const storage = await getStorage();
+
+  if (preview) {
+    const content = await storage.getText(ref.key);
+    if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ content, filename: ref.filename });
+  }
+
   if (storage.kind === "s3") {
     return NextResponse.redirect(await storage.presignedGetUrl(ref.key, ref.filename, ref.contentType), 302);
   }

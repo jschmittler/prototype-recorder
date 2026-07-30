@@ -21,6 +21,36 @@ body {
   }
 }
 
+@layer components {
+  .input {
+    @apply w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-[0.925rem] transition-shadow;
+  }
+  .input:focus {
+    @apply outline-none border-brand-500 ring-[3px] ring-brand-500/15;
+  }
+  .card {
+    @apply rounded-2xl border border-black/5 bg-white shadow-soft;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(0.97);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;
