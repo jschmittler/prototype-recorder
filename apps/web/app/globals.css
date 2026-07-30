@@ -31,6 +31,15 @@ body {
   .card {
     @apply rounded-2xl border border-black/5 bg-white shadow-soft;
   }
+  .studio-panel {
+    @apply rounded-xl border border-studio-800 bg-studio-900/80;
+  }
+  .studio-input {
+    @apply w-full rounded-lg border border-studio-700 bg-studio-950 px-3 py-2.5 text-sm text-studio-100 placeholder:text-studio-500 transition-colors;
+  }
+  .studio-input:focus {
+    @apply outline-none border-brand-500 ring-2 ring-brand-500/20;
+  }
 }
 
 @layer utilities {

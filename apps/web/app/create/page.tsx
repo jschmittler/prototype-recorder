@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProjectBar } from "@/components/studio/ProjectBar";
+import { StudioShell } from "@/components/studio/StudioShell";
 
 const EXAMPLE =
   "Start on the home page, sign in using the prototype button, search for Fusion, open the first result, visit the Benefits tab, and return home.";
@@ -18,6 +20,13 @@ const VIEWPORT_PREVIEWS = {
   mobile: { w: 390, h: 844, label: "Mobile" },
 } as const;
 
+const WIZARD_STEPS = [
+  { id: 1, label: "Import", desc: "Prototype URL" },
+  { id: 2, label: "Brief", desc: "Instructions" },
+  { id: 3, label: "Output", desc: "Format settings" },
+  { id: 4, label: "Export", desc: "Start render" },
+] as const;
+
 export default function CreatePage() {
   const router = useRouter();
   const [url, setUrl] = useState("");
@@ -26,8 +35,6 @@ export default function CreatePage() {
   const [durationTarget, setDurationTarget] = useState("auto");
   const [viewport, setViewport] = useState<keyof typeof VIEWPORT_PREVIEWS>("desktop");
   const [pacing, setPacing] = useState("standard");
-  const [customize, setCustomize] = useState(false);
-  const [advanced, setAdvanced] = useState(false);
   const [outputName, setOutputName] = useState("");
   const [includeOptimizedCopy, setIncludeOptimizedCopy] = useState(true);
   const [keepDiagnostics, setKeepDiagnostics] = useState(false);
@@ -35,6 +42,7 @@ export default function CreatePage() {
   const [errors, setErrors] = useState<string[]>([]);
 
   const vp = VIEWPORT_PREVIEWS[viewport];
+  const activeStep = !url ? 1 : !instructions ? 2 : 3;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,92 +81,120 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Step n={1} label="Describe" active />
-        <span className="text-gray-300">→</span>
-        <Step n={2} label="Generate" />
-        <span className="text-gray-300">→</span>
-        <Step n={3} label="Export" />
-      </div>
+    <StudioShell breadcrumb={[{ label: "New project" }]}>
+      <ProjectBar
+        title="New walkthrough project"
+        subtitle="Import your prototype, write a brief, and send it to the render queue."
+        status="draft"
+      />
 
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Create a walkthrough</h1>
-      <p className="mt-2 text-gray-600 max-w-xl">
-        Paste your prototype and describe the journey. We&apos;ll inspect it, write a script, record with a smooth cursor,
-        and hand you a share-ready video.
-      </p>
-
-      {errors.length > 0 && (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <ul className="list-disc pl-5 space-y-1">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <form onSubmit={submit} className="mt-8 space-y-8">
-        <section className="card p-6 space-y-6">
-          <Field label="Prototype URL" hint="A publicly reachable published prototype (e.g. https://your-site.figma.site).">
-            <input
-              type="url"
-              required
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://your-prototype.figma.site"
-              className="input"
-            />
-          </Field>
-
-          <Field label="What should the walkthrough show?" hint="Describe the journey in plain English — we'll turn it into a script.">
-            <textarea
-              required
-              rows={5}
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder={EXAMPLE}
-              className="input resize-y min-h-[120px]"
-            />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {EXAMPLE_CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => setInstructions(chip)}
-                  className="rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs text-gray-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-800 transition-colors"
+      <div className="grid gap-8 lg:grid-cols-[220px_1fr_240px]">
+        <aside className="hidden lg:block">
+          <nav className="space-y-1">
+            {WIZARD_STEPS.map((step) => {
+              const isActive = step.id === activeStep;
+              const isDone = step.id < activeStep;
+              return (
+                <div
+                  key={step.id}
+                  className={
+                    "rounded-lg px-3 py-2.5 border transition-colors " +
+                    (isActive
+                      ? "border-brand-500/40 bg-brand-500/10"
+                      : isDone
+                        ? "border-studio-800 bg-studio-900/40"
+                        : "border-transparent opacity-50")
+                  }
                 >
-                  {chip}
-                </button>
-              ))}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        "grid place-items-center h-5 w-5 rounded-full text-[10px] font-bold " +
+                        (isDone
+                          ? "bg-brand-500 text-white"
+                          : isActive
+                            ? "bg-brand-400/30 text-brand-200 ring-1 ring-brand-400/50"
+                            : "bg-studio-800 text-studio-500")
+                      }
+                    >
+                      {isDone ? "✓" : step.id}
+                    </span>
+                    <span className={"text-sm font-medium " + (isActive ? "text-white" : "text-studio-300")}>
+                      {step.label}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 pl-7 text-[11px] text-studio-500">{step.desc}</p>
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <div>
+          {errors.length > 0 && (
+            <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+              <ul className="list-disc pl-5 space-y-1">
+                {errors.map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
             </div>
-          </Field>
+          )}
 
-          <Field label="Title (optional)" hint="Shown on the export page and in share links.">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="Onboarding demo" />
-          </Field>
-        </section>
+          <form onSubmit={submit} className="space-y-6">
+            <section className="studio-panel p-5 sm:p-6 space-y-5">
+              <SectionHeader step={1} title="Import prototype" subtitle="Paste a published Figma Site or prototype URL." />
+              <Field label="Prototype URL">
+                <input
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://your-prototype.figma.site"
+                  className="studio-input"
+                />
+              </Field>
+              <Field label="Project title (optional)">
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="studio-input"
+                  placeholder="Onboarding demo"
+                />
+              </Field>
+            </section>
 
-        <section className="card overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setCustomize((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-black/[0.02] transition-colors"
-          >
-            <div>
-              <span className="block text-sm font-medium text-gray-900">Customize output</span>
-              <span className="block text-xs text-gray-500 mt-0.5">
-                {vp.label} · {vp.w}×{vp.h} · {durationTarget === "auto" ? "Auto duration" : `${durationTarget}s`}
-              </span>
-            </div>
-            <span className="text-gray-400 text-sm">{customize ? "▲" : "▼"}</span>
-          </button>
+            <section className="studio-panel p-5 sm:p-6 space-y-5">
+              <SectionHeader step={2} title="Write the brief" subtitle="Describe the journey in plain English — we turn it into a script." />
+              <Field label="Instructions">
+                <textarea
+                  required
+                  rows={5}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder={EXAMPLE}
+                  className="studio-input resize-y min-h-[120px]"
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {EXAMPLE_CHIPS.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setInstructions(chip)}
+                      className="rounded-full border border-studio-700 bg-studio-950 px-3 py-1 text-xs text-studio-400 hover:border-brand-500/40 hover:text-brand-200 transition-colors"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </section>
 
-          {customize && (
-            <div className="border-t border-black/5 p-5 space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <Field label="Approximate duration">
-                  <select value={durationTarget} onChange={(e) => setDurationTarget(e.target.value)} className="input">
+            <section className="studio-panel p-5 sm:p-6 space-y-5">
+              <SectionHeader step={3} title="Output settings" subtitle="Viewport, duration, and encoding options." />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Duration">
+                  <select value={durationTarget} onChange={(e) => setDurationTarget(e.target.value)} className="studio-input">
                     <option value="auto">Auto</option>
                     <option value="30">30 seconds</option>
                     <option value="60">60 seconds</option>
@@ -166,7 +202,7 @@ export default function CreatePage() {
                   </select>
                 </Field>
                 <Field label="Pacing">
-                  <select value={pacing} onChange={(e) => setPacing(e.target.value)} className="input">
+                  <select value={pacing} onChange={(e) => setPacing(e.target.value)} className="studio-input">
                     <option value="relaxed">Relaxed</option>
                     <option value="standard">Standard</option>
                     <option value="fast">Fast</option>
@@ -185,14 +221,14 @@ export default function CreatePage() {
                         type="button"
                         onClick={() => setViewport(key)}
                         className={
-                          "rounded-xl border p-3 text-left transition-all " +
+                          "rounded-lg border p-3 text-left transition-all " +
                           (active
-                            ? "border-brand-400 bg-brand-50 ring-2 ring-brand-200"
-                            : "border-black/10 hover:border-black/20")
+                            ? "border-brand-500/50 bg-brand-500/10 ring-1 ring-brand-500/30"
+                            : "border-studio-700 hover:border-studio-600")
                         }
                       >
-                        <span className="block text-xs font-medium text-gray-900">{v.label}</span>
-                        <span className="block text-[10px] text-gray-500 mt-0.5">
+                        <span className="block text-xs font-medium text-studio-200">{v.label}</span>
+                        <span className="block text-[10px] text-studio-500 mt-0.5">
                           {v.w}×{v.h}
                         </span>
                       </button>
@@ -200,82 +236,114 @@ export default function CreatePage() {
                   })}
                 </div>
               </Field>
+
+              <details className="group">
+                <summary className="cursor-pointer text-xs text-studio-500 hover:text-studio-300 transition-colors">
+                  Advanced encoding options
+                </summary>
+                <div className="mt-4 space-y-4 pt-4 border-t border-studio-800">
+                  <Field label="Custom output name">
+                    <input
+                      value={outputName}
+                      onChange={(e) => setOutputName(e.target.value)}
+                      className="studio-input"
+                      placeholder="my-walkthrough"
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-studio-400">
+                    <input
+                      type="checkbox"
+                      checked={includeOptimizedCopy}
+                      onChange={(e) => setIncludeOptimizedCopy(e.target.checked)}
+                      className="rounded border-studio-600"
+                    />
+                    Include optimized VP9 copy
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-studio-400">
+                    <input
+                      type="checkbox"
+                      checked={keepDiagnostics}
+                      onChange={(e) => setKeepDiagnostics(e.target.checked)}
+                      className="rounded border-studio-600"
+                    />
+                    Keep diagnostic artifacts
+                  </label>
+                </div>
+              </details>
+            </section>
+
+            <p className="text-xs text-studio-600 leading-relaxed">
+              By generating a walkthrough you allow this service to open and interact with the URL you provide in an
+              automated browser. Your prototype credentials are never requested or stored.
+            </p>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg bg-brand-600 px-5 py-3.5 text-white font-medium hover:bg-brand-500 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Sending to render queue…
+                </>
+              ) : (
+                <>Start export →</>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <aside className="hidden lg:block">
+          <div className="studio-panel p-4 sticky top-6">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-studio-500">Canvas preview</p>
+            <div
+              className="mt-3 mx-auto rounded-md border border-studio-700 bg-studio-950 flex items-center justify-center"
+              style={{
+                aspectRatio: `${vp.w}/${vp.h}`,
+                maxHeight: viewport === "mobile" ? 200 : 140,
+                width: viewport === "mobile" ? 88 : "100%",
+              }}
+            >
+              <span className="text-[10px] text-studio-600">{vp.w}×{vp.h}</span>
             </div>
-          )}
-        </section>
+            <dl className="mt-4 space-y-2 text-xs">
+              <PreviewRow k="Format" v="WebM · VP8" />
+              <PreviewRow k="Viewport" v={vp.label} />
+              <PreviewRow k="Duration" v={durationTarget === "auto" ? "Auto" : `${durationTarget}s`} />
+              <PreviewRow k="Pacing" v={pacing} />
+            </dl>
+          </div>
+        </aside>
+      </div>
+    </StudioShell>
+  );
+}
 
-        <section className="card overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setAdvanced((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left text-sm font-medium text-gray-700 hover:bg-black/[0.02]"
-          >
-            Advanced settings
-            <span className="text-gray-400">{advanced ? "▲" : "▼"}</span>
-          </button>
-          {advanced && (
-            <div className="border-t border-black/5 p-5 space-y-4">
-              <Field label="Custom output name">
-                <input value={outputName} onChange={(e) => setOutputName(e.target.value)} className="input" placeholder="my-walkthrough" />
-              </Field>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={includeOptimizedCopy} onChange={(e) => setIncludeOptimizedCopy(e.target.checked)} />
-                Include an optimized (VP9) copy for smaller file size
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={keepDiagnostics} onChange={(e) => setKeepDiagnostics(e.target.checked)} />
-                Keep diagnostic artifacts (for troubleshooting)
-              </label>
-            </div>
-          )}
-        </section>
-
-        <p className="text-xs text-gray-500 leading-relaxed">
-          By generating a walkthrough you allow this service to open and interact with the URL you provide in an
-          automated browser. Your prototype credentials are never requested or stored.
-        </p>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-xl bg-brand-600 px-5 py-3.5 text-white font-medium hover:bg-brand-700 shadow-soft disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
-        >
-          {submitting ? (
-            <>
-              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Starting export…
-            </>
-          ) : (
-            <>Generate walkthrough →</>
-          )}
-        </button>
-      </form>
+function SectionHeader({ step, title, subtitle }: { step: number; title: string; subtitle: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-400">Step {step}</p>
+      <h2 className="mt-1 text-lg font-semibold text-white">{title}</h2>
+      <p className="mt-1 text-sm text-studio-400">{subtitle}</p>
     </div>
   );
 }
 
-function Step({ n, label, active }: { n: number; label: string; active?: boolean }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <span className={"inline-flex items-center gap-1.5 " + (active ? "text-brand-700 font-medium" : "")}>
-      <span
-        className={
-          "grid place-items-center w-5 h-5 rounded-full text-[10px] font-semibold " +
-          (active ? "bg-brand-600 text-white" : "bg-black/5 text-gray-400")
-        }
-      >
-        {n}
-      </span>
-      {label}
-    </span>
+    <label className="block">
+      <span className="block text-sm font-medium text-studio-300">{label}</span>
+      <div className="mt-2">{children}</div>
+    </label>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function PreviewRow({ k, v }: { k: string; v: string }) {
   return (
-    <label className="block">
-      <span className="block text-sm font-medium text-gray-800">{label}</span>
-      {hint && <span className="block text-xs text-gray-500 mt-0.5">{hint}</span>}
-      <div className="mt-2">{children}</div>
-    </label>
+    <div className="flex justify-between gap-2">
+      <dt className="text-studio-600">{k}</dt>
+      <dd className="font-medium text-studio-300 capitalize">{v}</dd>
+    </div>
   );
 }

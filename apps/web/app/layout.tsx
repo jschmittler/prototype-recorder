@@ -13,20 +13,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
-        <header className="border-b border-black/5 bg-white/70 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <header className="border-b border-black/5 bg-white/70 backdrop-blur sticky top-0 z-30">
+          <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-[15px]">
               <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-brand-600 text-white text-sm">▶</span>
               Prototype Walkthrough
             </Link>
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <Link href="/create" className="hover:text-gray-900">Create</Link>
-              <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-gray-900">GitHub</a>
+            <nav className="flex items-center gap-5 text-sm text-gray-600">
+              <Link href="/create" className="hover:text-gray-900 transition-colors">New project</Link>
+              <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-gray-900 hidden sm:inline transition-colors">GitHub</a>
               <Link
                 href="/create"
-                className="rounded-lg bg-brand-600 px-3.5 py-2 text-white hover:bg-brand-700 transition-colors"
+                className="rounded-lg bg-brand-600 px-3.5 py-2 text-white text-sm hover:bg-brand-700 transition-colors"
               >
-                Create walkthrough
+                Start export
               </Link>
             </nav>
           </div>
