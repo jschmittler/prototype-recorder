@@ -236,27 +236,44 @@ function synthesizeWebm(
  *   otherwise               → FakeExecutor (default; used by the slice + tests)
  * The local executor is imported lazily to avoid a module cycle.
  */
+function resolveEngineDir(): string | undefined {
+  const hasEngine = (dir: string) => fs.existsSync(path.join(dir, "bin", "prototype-recorder-cli.mjs"));
+
+  if (process.env.ENGINE_DIR?.trim()) {
+    const configured = path.resolve(process.env.ENGINE_DIR.trim());
+    return hasEngine(configured) ? configured : undefined;
+  }
+
+  const candidates = [
+    path.resolve(process.cwd(), "packages/recorder-cli"),
+    path.resolve(process.cwd(), "../packages/recorder-cli"),
+    path.resolve(process.cwd(), "../../packages/recorder-cli"),
+  ];
+  try {
+    const req = createRequire(import.meta.url);
+    candidates.push(path.dirname(req.resolve("prototype-recorder-cli/package.json")));
+  } catch {
+    /* require.resolve may be unavailable under bundlers */
+  }
+  return candidates.find(hasEngine);
+}
+
 export async function getExecutor(): Promise<WalkthroughExecutor> {
   if ((process.env.EXECUTOR ?? "fake") === "local-process") {
-    let engineDir = process.env.ENGINE_DIR;
+    const engineDir = resolveEngineDir();
     if (!engineDir) {
-      const candidates = [
-        path.resolve(process.cwd(), "../../packages/recorder-cli"), // next in apps/web, worker in apps/worker
-        path.resolve(process.cwd(), "packages/recorder-cli"), // run from repo root
-      ];
-      try {
-        const req = createRequire(import.meta.url);
-        candidates.push(path.dirname(req.resolve("prototype-recorder-cli/package.json")));
-      } catch {
-        /* require.resolve may be unavailable under bundlers */
-      }
-      engineDir = candidates.find((d) => fs.existsSync(path.join(d, "bin", "prototype-recorder-cli.mjs")));
-      if (!engineDir) {
-        throw new ExecutorError(
-          `Could not locate prototype-recorder-cli; set ENGINE_DIR. Tried: ${candidates.join(", ")}`,
-          "unknown"
+      if ((process.env.APP_MODE ?? "demo") === "demo") {
+        console.warn(
+          "[engine-adapter] EXECUTOR=local-process but prototype-recorder-cli is unavailable; " +
+            "using FakeExecutor for demo. Hostinger/shared hosts cannot run Playwright — " +
+            "set EXECUTOR=fake or use a Docker worker for real recordings.",
         );
+        return new FakeExecutor({ stepMs: 500 });
       }
+      throw new ExecutorError(
+        "Could not locate prototype-recorder-cli; set ENGINE_DIR or EXECUTOR=fake.",
+        "unknown",
+      );
     }
     const { LocalProcessExecutor } = await import("./local");
     return new LocalProcessExecutor({ engineDir });

@@ -44,6 +44,14 @@ const dir = __dirname;
 process.env.NODE_ENV = 'production';
 process.chdir(dir);
 
+// Shared-hosting defaults — override in hPanel for production workers.
+if (!process.env.APP_MODE) process.env.APP_MODE = 'demo';
+if (!process.env.EXECUTOR) process.env.EXECUTOR = 'fake';
+if (!process.env.AI_PROVIDER) process.env.AI_PROVIDER = 'fake';
+if (!process.env.JOB_STORE) process.env.JOB_STORE = 'memory';
+if (!process.env.QUEUE_DRIVER) process.env.QUEUE_DRIVER = 'memory';
+if (!process.env.STORAGE_DRIVER) process.env.STORAGE_DRIVER = 'local';
+
 const currentPort = parseInt(process.env.PORT, 10) || 3000;
 const hostname = process.env.HOSTNAME || '0.0.0.0';
 const nextConfig = ${configMatch[1]};
@@ -92,6 +100,13 @@ const dir = fs.existsSync(path.join(bundleDir, '.next', 'BUILD_ID')) ? bundleDir
 
 process.env.NODE_ENV = 'production';
 process.chdir(dir);
+
+if (!process.env.APP_MODE) process.env.APP_MODE = 'demo';
+if (!process.env.EXECUTOR) process.env.EXECUTOR = 'fake';
+if (!process.env.AI_PROVIDER) process.env.AI_PROVIDER = 'fake';
+if (!process.env.JOB_STORE) process.env.JOB_STORE = 'memory';
+if (!process.env.QUEUE_DRIVER) process.env.QUEUE_DRIVER = 'memory';
+if (!process.env.STORAGE_DRIVER) process.env.STORAGE_DRIVER = 'local';
 
 const currentPort = parseInt(process.env.PORT, 10) || 3000;
 const hostname = process.env.HOSTNAME || '0.0.0.0';
