@@ -4,12 +4,14 @@
  * The entry file MUST call listen() in-process (no child_process.spawn).
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const webRoot = path.join(root, "apps/web");
-const standaloneApp = path.join(webRoot, ".next/standalone/apps/web");
+const standaloneRoot = path.join(webRoot, ".next/standalone");
+const standaloneApp = path.join(standaloneRoot, "apps/web");
 const outDir = path.join(root, "hostinger-dist");
 const reqFilesPath = path.join(webRoot, ".next/required-server-files.json");
 
@@ -39,6 +41,12 @@ rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
 copy(standaloneApp, outDir);
+if (existsSync(path.join(standaloneRoot, "node_modules"))) {
+  copy(path.join(standaloneRoot, "node_modules"), path.join(outDir, "node_modules"));
+}
+if (existsSync(path.join(standaloneRoot, "packages"))) {
+  copy(path.join(standaloneRoot, "packages"), path.join(outDir, "packages"));
+}
 copy(path.join(webRoot, "public"), path.join(outDir, "public"));
 copy(path.join(webRoot, ".next/static"), path.join(outDir, ".next/static"));
 
@@ -100,8 +108,20 @@ writeFileSync(
 );
 
 console.log(`[hostinger] deploy bundle ready at ${outDir}/server.js`);
-console.log("[hostinger] bundle files:", [
-  "server.js",
-  ".next/BUILD_ID",
-  ".hostinger-deploy",
-].map((f) => (existsSync(path.join(outDir, f)) ? f : `MISSING:${f}`)).join(", "));
+const bundleChecks = ["server.js", ".next/BUILD_ID", "node_modules/next/package.json", ".hostinger-deploy"];
+console.log(
+  "[hostinger] bundle files:",
+  bundleChecks.map((f) => (existsSync(path.join(outDir, f)) ? f : `MISSING:${f}`)).join(", "),
+);
+
+// Fail the build if git would exclude deploy artifacts (Hostinger respects .gitignore when packaging output).
+for (const f of bundleChecks) {
+  const rel = `hostinger-dist/${f}`;
+  try {
+    execSync(`git check-ignore -q ${JSON.stringify(rel)}`, { cwd: root, stdio: "ignore" });
+    console.error(`[hostinger] ERROR: ${rel} is gitignored — Hostinger will omit it from deploy output`);
+    process.exit(1);
+  } catch {
+    /* exit code 1 = not ignored (good) */
+  }
+}

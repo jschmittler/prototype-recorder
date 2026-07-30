@@ -1,11 +1,12 @@
-node_modules/
+/node_modules/
 dist/
-# Root-only generated launcher (do not use bare `server.js` — it ignores hostinger-dist/server.js).
+# Anchor dev caches to specific paths — never use bare `.next/` or unanchored rules that
+# hide Hostinger deploy output under hostinger-dist/.
+/apps/web/.next/
 /server.js
-storage/
-.next/
-out/
-coverage/
+/storage/
+/out/
+/coverage/
 *.tsbuildinfo
 
 # env & secrets
@@ -17,7 +18,6 @@ coverage/
 
 # job artifacts / local storage
 /tmp-jobs/
-/storage/
 *.webm
 
 # os / editor
