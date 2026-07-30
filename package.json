@@ -32,12 +32,23 @@
   "devDependencies": {
     "@types/node": "^22.7.0",
     "typescript": "^5.6.0",
-    "vitest": "^2.1.8",
+    "vitest": "^3.2.6",
     "zod": "^3.23.8"
+  },
+  "overrides": {
+    "postcss": "^8.5.18",
+    "postcss@8.4.31": "^8.5.18",
+    "sharp": "^0.35.0",
+    "sharp@0.34.5": "^0.35.0",
+    "esbuild": "^0.28.1",
+    "esbuild@0.21.5": "^0.28.1",
+    "vite": "^6.4.3",
+    "vite@5.4.21": "^6.4.3"
   },
   "allowScripts": {
     "esbuild@0.21.5": true,
     "@prisma/engines@6.19.3": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "sharp@0.35.3": true
   }
 }
