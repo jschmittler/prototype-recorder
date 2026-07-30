@@ -7,20 +7,26 @@ requires a VPS — see [vps-deploy.md](./vps-deploy.md).
 
 | Setting | Value |
 | --- | --- |
-| **Framework** | Next.js (or Other) |
+| **Framework** | Other |
 | **Branch** | `main` |
 | **Node version** | **20.x** |
 | **Root directory** | `./` |
 | **Build command** | `npm run build` |
-| **Start command** | `npm run start` |
+| **Start command** | `node server.js` |
 | **Output directory** | `hostinger-dist` |
 | **Entry file** | `server.js` |
 | **Package manager** | npm |
+
+Use **`node server.js`** for Start command (not `npm run start`). At runtime
+Hostinger’s working directory is the output folder, which already contains
+`server.js`.
 
 Do **not** use `npm run build:vps` or `npm run build:web` alone — those skip the
 `hostinger-dist` bundle.
 
 ## Environment variables (demo)
+
+**Replace your current env vars with these** for the shared-hosting demo:
 
 ```
 APP_MODE=demo
@@ -30,24 +36,27 @@ JOB_STORE=memory
 QUEUE_DRIVER=memory
 STORAGE_DRIVER=local
 NODE_ENV=production
+LOG_LEVEL=info
 ```
 
-Remove `EXECUTOR=local-process` if present — it cannot run on shared hosting.
+Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY` unless you move to a VPS.
+`local-process` requires Playwright, which shared hosting cannot run.
 
 ## After deploy
 
-1. Open **Runtime logs** — you should see `Next.js` starting and **no** errors.
-2. Visit `/api/health` — expect `"executor":"fake"` and `"ok":true`.
-3. Click **Running → Restart** if you still see 503 from the CDN.
+1. Build log must end with: `[hostinger] deploy bundle ready at .../hostinger-dist/server.js`
+2. Open **Runtime logs** — you should see `Next.js` starting.
+3. Visit `/api/health` — expect `"executor":"fake"` and `"ok":true`.
+4. Click **Running → Restart** if you still see 503 from the CDN.
 
-## Troubleshooting 503
+## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| Build log: `standalone server missing` | Build command must be `npm run build` (not `build:web`) |
-| `Cannot find module .../server.js` | Output directory must be `hostinger-dist`, entry `server.js` |
-| App starts then 503 | Restart from hPanel; confirm output directory is `hostinger-dist` |
-| Security scan blocks deploy | Run `npm audit` locally; fix before push |
+| Build succeeds but deploy fails / 503 | Ensure `hostinger-dist/` is **not** in `.gitignore` (fixed in repo) |
+| `Cannot find module .../server.js` | Output = `hostinger-dist`, entry = `server.js`, start = `node server.js` |
+| Build: `standalone server missing` | Build command must be `npm run build` |
+| Jobs fail at PREPARING | Set `EXECUTOR=fake` (not `local-process`) |
 
 ## Redeploy checklist
 

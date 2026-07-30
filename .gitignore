@@ -1,6 +1,6 @@
 node_modules/
 dist/
-hostinger-dist/
+# hostinger-dist/ is built during deploy — do NOT gitignore it (Hostinger skips ignored output paths).
 server.js
 storage/
 .next/

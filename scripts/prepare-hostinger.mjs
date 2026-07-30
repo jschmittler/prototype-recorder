@@ -92,4 +92,11 @@ if (!existsSync(path.join(outDir, "server.js")) || !existsSync(path.join(outDir,
   process.exit(1);
 }
 
+// Marker so Hostinger (and humans) can verify the output folder is non-empty.
+writeFileSync(
+  path.join(outDir, ".hostinger-deploy"),
+  `ok\nbuilt=${new Date().toISOString()}\n`,
+  "utf8",
+);
+
 console.log(`[hostinger] deploy bundle ready at ${outDir}/server.js`);
