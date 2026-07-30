@@ -1,10 +1,7 @@
 node_modules/
 dist/
-# Do not gitignore hostinger-dist/ itself — Hostinger may skip ignored deploy output.
-# Ignore build artifacts locally; only .gitkeep is tracked.
-hostinger-dist/*
-!hostinger-dist/.gitkeep
-server.js
+# Root-only generated launcher (do not use bare `server.js` — it ignores hostinger-dist/server.js).
+/server.js
 storage/
 .next/
 out/

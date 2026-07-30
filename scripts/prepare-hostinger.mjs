@@ -100,3 +100,8 @@ writeFileSync(
 );
 
 console.log(`[hostinger] deploy bundle ready at ${outDir}/server.js`);
+console.log("[hostinger] bundle files:", [
+  "server.js",
+  ".next/BUILD_ID",
+  ".hostinger-deploy",
+].map((f) => (existsSync(path.join(outDir, f)) ? f : `MISSING:${f}`)).join(", "));

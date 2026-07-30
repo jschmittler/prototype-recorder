@@ -53,7 +53,7 @@ Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY` unless you move to a VPS
 
 | Symptom | Fix |
 | --- | --- |
-| Build succeeds but deploy fails / 503 | Ensure `hostinger-dist/` is **not** in `.gitignore` (fixed in repo) |
+| Build succeeds but deploy fails / 503 | Check `.gitignore` is not excluding `hostinger-dist/server.js` (use `/server.js` only at repo root) |
 | `Cannot find module .../server.js` | Output = `hostinger-dist`, entry = `server.js`, start = `node server.js` |
 | Build: `standalone server missing` | Build command must be `npm run build` |
 | Jobs fail at PREPARING | Set `EXECUTOR=fake` (not `local-process`) |
