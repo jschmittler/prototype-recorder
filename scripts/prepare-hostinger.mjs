@@ -18,7 +18,7 @@ function copy(from, to) {
 }
 
 if (!existsSync(path.join(standaloneApp, "server.js"))) {
-  console.error("[hostinger] standalone server missing — enable output: 'standalone' and run next build");
+  console.error("[hostinger] standalone server missing — run: BUILD_TARGET=hostinger npm run build");
   process.exit(1);
 }
 

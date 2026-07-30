@@ -1,6 +1,7 @@
 node_modules/
 dist/
 hostinger-dist/
+storage/
 .next/
 out/
 coverage/
@@ -10,6 +11,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+!.env.vps.example
 *.pem
 
 # job artifacts / local storage

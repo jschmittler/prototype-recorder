@@ -11,8 +11,8 @@ const nextConfig = {
   reactStrictMode: true,
   // Pin the monorepo root so file tracing ignores unrelated parent lockfiles.
   outputFileTracingRoot: path.resolve(here, "../.."),
-  // Self-contained server bundle for Hostinger (output → hostinger-dist/server.js).
-  output: "standalone",
+  // Standalone bundle only for Hostinger (BUILD_TARGET=hostinger). VPS uses full monorepo + next start.
+  ...(process.env.BUILD_TARGET === "hostinger" ? { output: "standalone" } : {}),
 };
 
 export default nextConfig;
