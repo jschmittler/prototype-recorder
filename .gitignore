@@ -1,6 +1,7 @@
 node_modules/
 dist/
 hostinger-dist/
+server.js
 storage/
 .next/
 out/
