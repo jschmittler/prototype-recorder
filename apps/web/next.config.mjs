@@ -11,6 +11,8 @@ const nextConfig = {
   reactStrictMode: true,
   // Pin the monorepo root so file tracing ignores unrelated parent lockfiles.
   outputFileTracingRoot: path.resolve(here, "../.."),
+  // Smaller deploy bundle; required for reliable Hostinger Node.js hosting.
+  output: "standalone",
 };
 
 export default nextConfig;

@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "lsof -ti:3000,3001,3002 2>/dev/null | xargs kill -9 2>/dev/null; rm -rf .next && next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && npm run copy:standalone-assets",
+    "copy:standalone-assets": "cp -r public .next/standalone/apps/web/ && cp -r .next/static .next/standalone/apps/web/.next/",
+    "start": "node .next/standalone/apps/web/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
