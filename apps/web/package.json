@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "lsof -ti:3000,3001,3002 2>/dev/null | xargs kill -9 2>/dev/null; rm -rf .next && next dev",
-    "build": "next build && npm run copy:standalone-assets",
-    "copy:standalone-assets": "cp -r public .next/standalone/apps/web/ && cp -r .next/static .next/standalone/apps/web/.next/",
-    "start": "node .next/standalone/apps/web/server.js",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ptw/core": "0.1.0",
     "@ptw/engine-adapter": "0.1.0",
     "@ptw/job-contracts": "0.1.0",
     "@ptw/script-generator": "0.1.0",
@@ -19,12 +19,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.35.0",
-    "zod": "^3.23.8",
-    "@ptw/core": "0.1.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
-    "@types/react": "^19.0.0",
+    "@types/react": "19.2.17",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.18",

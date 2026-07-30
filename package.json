@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run build -w prototype-recorder-web",
-    "start": "npm run start -w prototype-recorder-web",
+    "start": "node server.js",
     "lint": "eslint . || true",
     "format": "prettier --write .",
     "dev": "npm run dev -w prototype-recorder-web",
