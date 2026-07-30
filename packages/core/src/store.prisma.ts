@@ -7,6 +7,11 @@ import { PrismaClient } from "@prisma/client";
 import type { Job } from "@ptw/job-contracts";
 import type { CreateOpts, JobStore } from "./store";
 
+/** Prisma row shape — explicit so builds succeed even before `prisma generate`. */
+type JobRecord = {
+  data: unknown;
+};
+
 export class PrismaJobStore implements JobStore {
   readonly kind = "postgres" as const;
   private prisma: PrismaClient;
@@ -48,7 +53,7 @@ export class PrismaJobStore implements JobStore {
       orderBy: { createdAt: "desc" },
       take: limit,
     });
-    return rows.map((r) => r.data as unknown as Job);
+    return rows.map((r: JobRecord) => r.data as Job);
   }
   async findByIdempotency(ownerId: string, key: string): Promise<Job | null> {
     const row = await this.prisma.job.findFirst({ where: { ownerId, idempotencyKey: key } });
