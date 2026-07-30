@@ -1,6 +1,7 @@
 /**
  * Assemble a self-contained Hostinger deploy folder.
- * Hostinger copies Output directory → .builds/current/nodejs/ and requires server.js there.
+ * Hostinger copies Output directory → .builds/current/nodejs/ and require()s server.js.
+ * The entry file MUST call listen() in-process (no child_process.spawn).
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -21,6 +22,13 @@ if (!existsSync(path.join(standaloneApp, "server.js"))) {
   process.exit(1);
 }
 
+const standaloneSrc = readFileSync(path.join(standaloneApp, "server.js"), "utf8");
+const configMatch = standaloneSrc.match(/const nextConfig = (\{[\s\S]*?\})\n/);
+if (!configMatch) {
+  console.error("[hostinger] could not extract nextConfig from standalone server.js");
+  process.exit(1);
+}
+
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
@@ -28,49 +36,38 @@ copy(standaloneApp, outDir);
 copy(path.join(webRoot, "public"), path.join(outDir, "public"));
 copy(path.join(webRoot, ".next/static"), path.join(outDir, ".next/static"));
 
-// Next standalone server.js is ESM; Hostinger lsnode loads the entry via require().
-const nextServer = path.join(outDir, "server.js");
-const appServer = path.join(outDir, "app-server.mjs");
-if (existsSync(nextServer)) {
-  renameSyncSafe(nextServer, appServer);
-}
-
 writeFileSync(
   path.join(outDir, "server.js"),
-  `/**
- * Hostinger entry (CommonJS). lsnode require() cannot load ESM directly.
- */
-const { spawn } = require("node:child_process");
-const path = require("node:path");
+  `'use strict';
+const dir = __dirname;
 
-const port = String(process.env.PORT || "3000");
-process.env.PORT = port;
-process.env.HOSTNAME = process.env.HOSTNAME || "0.0.0.0";
-process.env.NODE_ENV = "production";
+process.env.NODE_ENV = 'production';
+process.chdir(dir);
 
-const appServer = path.join(__dirname, "app-server.mjs");
-const child = spawn(process.execPath, [appServer], {
-  cwd: __dirname,
-  stdio: "inherit",
-  env: process.env,
-});
+const currentPort = parseInt(process.env.PORT, 10) || 3000;
+const hostname = process.env.HOSTNAME || '0.0.0.0';
+const nextConfig = ${configMatch[1]};
 
-child.on("error", (err) => {
-  console.error("[ptw-start] failed to launch app-server.mjs:", err.message);
+process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(nextConfig);
+
+require('next');
+const { startServer } = require('next/dist/server/lib/start-server');
+
+startServer({
+  dir,
+  isDev: false,
+  config: nextConfig,
+  hostname,
+  port: currentPort,
+  allowRetry: false,
+}).catch((err) => {
+  console.error(err);
   process.exit(1);
-});
-
-child.on("exit", (code, signal) => {
-  if (code !== 0) {
-    console.error("[ptw-start] app-server.mjs exited code=%s signal=%s", code, signal);
-  }
-  process.exit(code ?? 1);
 });
 `,
   "utf8",
 );
 
-// Drop "type":"module" so lsnode treats server.js as CommonJS.
 const pkgPath = path.join(outDir, "package.json");
 if (existsSync(pkgPath)) {
   const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
@@ -78,15 +75,46 @@ if (existsSync(pkgPath)) {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
 }
 
-if (!existsSync(path.join(outDir, "server.js")) || !existsSync(appServer)) {
+if (!existsSync(path.join(outDir, "server.js"))) {
   console.error("[hostinger] deploy bundle incomplete");
   process.exit(1);
 }
 
-console.log(`[hostinger] deploy bundle ready at ${outDir}/server.js`);
+// Root server.js for Hostinger when output directory is "." (full repo deploy).
+writeFileSync(
+  path.join(root, "server.js"),
+  `'use strict';
+const path = require('path');
+const fs = require('fs');
 
-function renameSyncSafe(from, to) {
-  rmSync(to, { force: true });
-  cpSync(from, to);
-  rmSync(from, { force: true });
-}
+const bundleDir = path.join(__dirname, 'hostinger-dist');
+const dir = fs.existsSync(path.join(bundleDir, '.next', 'BUILD_ID')) ? bundleDir : path.join(__dirname, 'apps/web');
+
+process.env.NODE_ENV = 'production';
+process.chdir(dir);
+
+const currentPort = parseInt(process.env.PORT, 10) || 3000;
+const hostname = process.env.HOSTNAME || '0.0.0.0';
+const nextConfig = ${configMatch[1]};
+
+process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(nextConfig);
+
+require('next');
+const { startServer } = require('next/dist/server/lib/start-server');
+
+startServer({
+  dir,
+  isDev: false,
+  config: nextConfig,
+  hostname,
+  port: currentPort,
+  allowRetry: false,
+}).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+`,
+  "utf8",
+);
+
+console.log(`[hostinger] deploy bundle ready at ${outDir}/server.js`);

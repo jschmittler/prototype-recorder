@@ -2,7 +2,6 @@
   "name": "prototype-recorder",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Prototype Walkthrough — a SaaS app that turns a Figma prototype URL + plain-English brief into a polished walkthrough video, built on the prototype-recorder-cli recording engine.",
   "workspaces": [
     "packages/*",
@@ -16,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run build -w prototype-recorder-web && node scripts/prepare-hostinger.mjs",
-    "start": "node hostinger-dist/server.js",
+    "start": "node server.js",
     "lint": "eslint . || true",
     "format": "prettier --write .",
     "dev": "npm run dev -w prototype-recorder-web",
