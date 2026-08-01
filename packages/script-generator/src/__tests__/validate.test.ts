@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { VIEWPORTS } from "@ptw/job-contracts";
 import { validateScript, type ValidateOptions } from "../validate";
+import { splitScript, withOutputName } from "../dsl";
 
 const URL = "https://acme.figma.site/";
 const OPTS: ValidateOptions = {
@@ -103,5 +104,33 @@ describe("validateScript", () => {
     const r = validateScript(empty, OPTS);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.join(" ")).toMatch(/no steps/);
+  });
+});
+
+describe("withOutputName", () => {
+  it("rewrites an output name that does not match the job", () => {
+    // The exact shape a reused script arrives in: written for a different job.
+    const reused = good({ output: "walkthrough" });
+    const pinned = withOutputName(reused, "quarterly-review");
+    expect(splitScript(pinned).frontMatterRaw.output).toBe("quarterly-review");
+    // Steps must survive untouched; only the header is rewritten.
+    expect(splitScript(pinned).bodyLines.length).toBe(splitScript(reused).bodyLines.length);
+  });
+
+  it("adds the key when the script omits it entirely", () => {
+    const noOutput = `---\nname: Demo\nurl: ${URL}\nviewport: 1440x900\n---\n\n## 1. Start\n- hold 1s\n`;
+    const pinned = withOutputName(noOutput, "demo-job");
+    expect(splitScript(pinned).frontMatterRaw.output).toBe("demo-job");
+    expect(validateScript(pinned, OPTS).ok).toBe(true);
+  });
+
+  it("leaves a script with no front-matter alone for validation to reject", () => {
+    const bare = "## 1. Start\n- hold 1s\n";
+    expect(withOutputName(bare, "demo-job")).toBe(bare);
+  });
+
+  it("keeps the script valid after pinning", () => {
+    const pinned = withOutputName(good(), "renamed-job");
+    expect(validateScript(pinned, OPTS).ok).toBe(true);
   });
 });

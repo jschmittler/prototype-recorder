@@ -24,6 +24,7 @@ import {
   generateValidatedScript,
   ScriptGenerationError,
   validateScript,
+  withOutputName,
   type ValidateOptions,
 } from "@ptw/script-generator";
 import { ALLOWED_VIEWPORTS, LOG_TAIL_MAX, WORKDIR_ROOT, log } from "./config";
@@ -139,7 +140,10 @@ export async function runPipeline(jobId: string, deps: PipelineDeps): Promise<vo
 
     await setStatus("VALIDATING_SCRIPT");
     const scriptPath = path.join(workDir, `${baseName}.md`);
-    fs.writeFileSync(scriptPath, gen.script);
+    // Pin the engine's output name to this job's, so a reused script recorded
+    // under a different title still lands where the upload step looks for it.
+    const script = withOutputName(gen.script, baseName);
+    fs.writeFileSync(scriptPath, script);
     const scriptKey = `${jobId}/${baseName}.md`;
     await storage.putFile(scriptKey, scriptPath, "text/markdown; charset=utf-8");
 

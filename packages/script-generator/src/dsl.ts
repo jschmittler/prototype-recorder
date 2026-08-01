@@ -154,6 +154,33 @@ export function splitScript(script: string): SplitScript {
   return { frontMatterRaw, hadFrontMatter, bodyLines };
 }
 
+/**
+ * Force the front-matter `output:` to `name`.
+ *
+ * The engine names the file it writes from this key, while the pipeline looks
+ * for a file named after the job. A reused or model-written script cannot know
+ * the name of the job it will eventually run under, so the value is rewritten
+ * here rather than trusted to match — a mismatch otherwise surfaces only after
+ * a full recording, as a missing output file.
+ */
+export function withOutputName(script: string, name: string): string {
+  const lines = script.replace(/\r\n/g, "\n").split("\n");
+  // No front-matter at all is a validation error, not something to repair here.
+  if (lines[0]?.trim() !== "---") return script;
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      lines.splice(i, 0, `output: ${name}`);
+      return lines.join("\n");
+    }
+    if (/^output\s*:/.test(lines[i])) {
+      lines[i] = `output: ${name}`;
+      return lines.join("\n");
+    }
+  }
+  return script;
+}
+
 /** Extract step lines (`- verb …`) from body lines. */
 export function stepLines(body: { text: string; line: number }[]): { verb: string; raw: string; line: number }[] {
   const steps: { verb: string; raw: string; line: number }[] = [];

@@ -15,8 +15,12 @@ export function makePoster(
   durationSeconds: number,
   ffmpegPath = "ffmpeg"
 ): string | undefined {
-  // Far enough in to have real content, but never past the end of a short clip.
-  const offset = durationSeconds > 0 ? Math.min(1.5, durationSeconds * 0.25) : 0;
+  // A walkthrough opens on a page that is still painting, so the first seconds
+  // are blank or half-drawn. Take a frame a short way in — proportional so long
+  // recordings do not all get their opening moment, clamped so short ones are
+  // not sampled past the end.
+  const target = Math.min(Math.max(durationSeconds * 0.15, 2.5), 8);
+  const offset = durationSeconds > 0 ? Math.min(target, durationSeconds * 0.8) : 0;
   const posterPath = path.join(path.dirname(videoPath), `${path.parse(videoPath).name}.poster.jpg`);
 
   try {
