@@ -2,8 +2,9 @@
  * prototype-recorder-cli CLI.
  *
  * Commands:
- *   record  [script.md] [--url U] [--headed] [--pace N]   record a walkthrough
- *   inspect [url]        [--headed]                        inspect a prototype
+ *   record    [script.md] [--url U] [--headed] [--pace N] record a walkthrough
+ *   preflight [script.md] [--url U]                       dry-run a script, no video
+ *   inspect   [url]        [--headed]                     inspect a prototype
  *   auth                                                   headed Figma auth setup
  *   setup                                                  install the Chromium browser
  *   list                                                   list available scripts
@@ -24,6 +25,7 @@ interface Flags {
   url?: string;
   headed?: boolean;
   pace?: string;
+  screens?: string;
   help?: boolean;
   version?: boolean;
 }
@@ -39,6 +41,8 @@ function parse(argv: string[]): Flags {
     else if (a.startsWith("--url=")) f.url = a.slice(6);
     else if (a === "--pace") f.pace = argv[++i];
     else if (a.startsWith("--pace=")) f.pace = a.slice(7);
+    else if (a === "--screens") f.screens = argv[++i];
+    else if (a.startsWith("--screens=")) f.screens = a.slice(10);
     else f.positionals.push(a);
   }
   return f;
@@ -57,7 +61,8 @@ const USAGE = `prototype-recorder-cli — record automated walkthroughs of hoste
 
 Usage:
   prototype-recorder-cli record [script.md] [--url <url>] [--headed] [--pace <n>]
-  prototype-recorder-cli inspect [url] [--headed]
+  prototype-recorder-cli preflight [script.md] [--url <url>]
+  prototype-recorder-cli inspect [url] [--headed] [--screens <n>]
   prototype-recorder-cli auth
   prototype-recorder-cli setup
   prototype-recorder-cli list
@@ -67,8 +72,10 @@ Options:
   --url <url>    prototype URL (overrides the script's front-matter; = PROTOTYPE_URL)
   --headed       run with a visible browser window (default: headless)
   --pace <n>     scale every pause/scroll duration (e.g. 0.85 faster, 1.3 slower)
+  --screens <n>  screens to open past the landing page while inspecting (default 6, 0 off)
 
 Examples:
+  prototype-recorder-cli preflight scripts/acme.md --url https://acme.figma.site
   prototype-recorder-cli record scripts/acme.md --url https://acme.figma.site
   npx @your-org/prototype-recorder-cli record ./my-journey.md
   prototype-recorder-cli inspect https://acme.figma.site --headed`;
@@ -109,11 +116,19 @@ async function main() {
   if (flags.url) process.env.PROTOTYPE_URL = flags.url;
   if (flags.headed) process.env.HEADED = "1";
   if (flags.pace) process.env.PACE = flags.pace;
+  if (flags.screens) process.env.INSPECT_SCREENS = flags.screens;
 
   switch (command) {
     case "record": {
       const { run } = await import("./record-walkthrough.js");
       await run(flags.positionals[0]);
+      return;
+    }
+    case "preflight": {
+      const { preflight } = await import("./preflight.js");
+      const report = await preflight(flags.positionals[0], flags.url);
+      // Non-zero exit signals "this script will not record cleanly".
+      if (report.failedCount > 0) process.exit(3);
       return;
     }
     case "inspect": {

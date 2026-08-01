@@ -26,6 +26,192 @@ function log(section: string, msg: string) {
   console.log(`[inspect] ${section} :: ${msg}`);
 }
 
+/** How many screens past the landing page to open (0 disables exploration). */
+function maxScreens(): number {
+  const n = Number(process.env.INSPECT_SCREENS);
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 10) : 6;
+}
+
+export interface ExploredScreen {
+  /** The control that was clicked to reach this screen. */
+  label: string;
+  url: string;
+  buttons: string[];
+  links: string[];
+  textboxes: string[];
+  tabs: string[];
+  headings: string[];
+  imgAlts: string[];
+}
+
+/** Accessible names, by role, for whatever is currently rendered. */
+async function dumpElements(page: Page): Promise<Record<string, string[]>> {
+  return page
+    .evaluate(() => {
+      function accName(el: Element): string {
+        const aria = el.getAttribute("aria-label");
+        if (aria) return aria.trim();
+        const text = (el as HTMLElement).innerText || el.textContent || "";
+        return text.replace(/\s+/g, " ").trim().slice(0, 80);
+      }
+      const results: Record<string, string[]> = {
+        buttons: [],
+        links: [],
+        textboxes: [],
+        tabs: [],
+        headings: [],
+        images: [],
+      };
+      document.querySelectorAll("button, [role=button]").forEach((el) => {
+        const n = accName(el);
+        if (n) results.buttons.push(n);
+      });
+      document.querySelectorAll("a, [role=link]").forEach((el) => {
+        const n = accName(el);
+        if (n) results.links.push(n);
+      });
+      document
+        .querySelectorAll("input, textarea, [role=textbox], [contenteditable=true]")
+        .forEach((el) => {
+          const ph = (el as HTMLInputElement).placeholder || el.getAttribute("aria-label") || "";
+          results.textboxes.push(ph.trim() || "(no placeholder/label)");
+        });
+      document.querySelectorAll("[role=tab]").forEach((el) => {
+        const n = accName(el);
+        if (n) results.tabs.push(n);
+      });
+      document.querySelectorAll("h1, h2, h3, [role=heading]").forEach((el) => {
+        const n = accName(el);
+        if (n) results.headings.push(n);
+      });
+      document.querySelectorAll("img[alt], [role=img][aria-label]").forEach((el) => {
+        const n = el.getAttribute("alt") || el.getAttribute("aria-label") || "";
+        if (n) results.images.push(n.trim());
+      });
+      for (const k of Object.keys(results)) {
+        results[k] = Array.from(new Set(results[k])).slice(0, 60);
+      }
+      return results;
+    })
+    .catch(() => ({}) as Record<string, string[]>);
+}
+
+/**
+ * Accessible names of the primary navigation controls — the things a walkthrough
+ * is most likely to click. Prefers real nav landmarks and falls back to whatever
+ * sits in the top strip of the page.
+ */
+async function navCandidates(page: Page, limit: number): Promise<string[]> {
+  return page
+    .evaluate((max) => {
+      const name = (el: Element): string => {
+        const aria = el.getAttribute("aria-label");
+        if (aria) return aria.trim();
+        return ((el as HTMLElement).innerText || "").replace(/\s+/g, " ").trim();
+      };
+      const visible = (el: Element): boolean => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.top >= 0 && r.top < window.innerHeight;
+      };
+      const usable = (n: string): boolean => n.length > 1 && n.length <= 40 && /[a-z]{2}/i.test(n);
+
+      const pick = (roots: Element[]): string[] => {
+        const out: string[] = [];
+        for (const root of roots) {
+          root.querySelectorAll("a, [role=link], button, [role=button], [role=tab]").forEach((el) => {
+            if (!visible(el)) return;
+            const n = name(el);
+            if (usable(n)) out.push(n);
+          });
+        }
+        return out;
+      };
+
+      const landmarks = Array.from(document.querySelectorAll("nav, header, aside, [role=navigation]"));
+      let names = pick(landmarks);
+
+      if (names.length < 2) {
+        // No landmarks: take controls from the top strip of the viewport.
+        const all: string[] = [];
+        document.querySelectorAll("a, [role=link], button, [role=button], [role=tab]").forEach((el) => {
+          if (!visible(el)) return;
+          if (el.getBoundingClientRect().top > window.innerHeight * 0.25) return;
+          const n = name(el);
+          if (usable(n)) all.push(n);
+        });
+        names = all;
+      }
+      return Array.from(new Set(names)).slice(0, max);
+    }, limit)
+    .catch(() => [] as string[]);
+}
+
+/** URL plus leading heading — enough to tell "somewhere new" from "same screen". */
+function screenSignature(url: string, headings: string[]): string {
+  return `${url}|${headings[0] ?? ""}`;
+}
+
+/**
+ * Click primary nav controls and record the screens they open. Navigation is
+ * usually persistent, so screens are visited without resetting; if a control
+ * goes missing the landing page is reloaded and exploration continues.
+ *
+ * Many controls (logos, home links, locale switchers) lead straight back to the
+ * landing page, so candidates are tried until `limit` *distinct* screens have
+ * been captured or the time budget runs out.
+ */
+async function exploreScreens(page: Page, url: string, limit: number): Promise<ExploredScreen[]> {
+  if (limit === 0) return [];
+  const candidates = await navCandidates(page, Math.min(limit * 3, 18));
+  log("explore", `nav candidates: ${candidates.join(", ") || "(none)"}`);
+
+  const landing = await dumpElements(page);
+  const seen = new Set([screenSignature(page.url(), landing.headings ?? [])]);
+  const screens: ExploredScreen[] = [];
+  const deadline = Date.now() + 60_000;
+
+  for (const label of candidates) {
+    if (screens.length >= limit || Date.now() > deadline) break;
+    try {
+      const locator = page
+        .getByRole("link", { name: label, exact: true })
+        .or(page.getByRole("button", { name: label, exact: true }));
+
+      if (!(await locator.first().isVisible().catch(() => false))) {
+        // The control is gone — the previous click left the shared nav behind.
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+        await page.waitForTimeout(2000);
+        if (!(await locator.first().isVisible().catch(() => false))) continue;
+      }
+      await locator.first().click({ timeout: 5000 });
+      await page.waitForTimeout(2200);
+
+      const el = await dumpElements(page);
+      const signature = screenSignature(page.url(), el.headings ?? []);
+      if (seen.has(signature)) {
+        log("explore", `"${label}" led nowhere new — skipped`);
+        continue;
+      }
+      seen.add(signature);
+
+      screens.push({
+        label,
+        url: page.url(),
+        buttons: el.buttons ?? [],
+        links: el.links ?? [],
+        textboxes: el.textboxes ?? [],
+        tabs: el.tabs ?? [],
+        headings: el.headings ?? [],
+        imgAlts: el.images ?? [],
+      });
+      log("explore", `"${label}" -> ${(el.headings ?? [])[0] ?? "(no heading)"}`);
+    } catch (e) {
+      log("explore", `"${label}" skipped (${String(e).slice(0, 80)})`);
+    }
+  }
+  return screens;
+}
+
 async function describeFrame(frame: Frame, label: string) {
   const out: string[] = [];
   out.push(`\n===== ${label} =====`);
@@ -180,6 +366,11 @@ export async function main() {
   for (let i = 0; i < childFrames.length; i++) {
     report.push(await describeFrame(childFrames[i], `CHILD FRAME #${i} (${childFrames[i].url()})`));
   }
+
+  // Exploration navigates away, so it runs after every frame has been described.
+  const screens = await exploreScreens(page, finalUrl, maxScreens());
+  log("explore", `captured ${screens.length} screen(s) beyond the landing page`);
+  report.push(`\n===== EXPLORED SCREENS =====\n${JSON.stringify(screens, null, 2)}`);
 
   if (consoleErrors.length) {
     report.push(`\n===== CONSOLE / PAGE ERRORS =====\n${consoleErrors.join("\n")}`);

@@ -16,6 +16,7 @@ APP_DIR="/opt/ptw"
 REPO="https://github.com/jschmittler/prototype-recorder-live.git"
 BRANCH="main"
 SKIP_APT=false
+SKIP_CLONE=false
 
 usage() {
   sed -n '2,8p' "$0"
@@ -25,6 +26,7 @@ usage() {
   echo "  --repo URL          Git remote (default: prototype-recorder-live)"
   echo "  --branch NAME       Git branch (default: main)"
   echo "  --skip-apt          Skip apt packages (Node/Caddy already installed)"
+  echo "  --skip-clone        Skip git clone/pull (app already rsync'd to --app-dir)"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -34,6 +36,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --skip-apt) SKIP_APT=true; shift ;;
+    --skip-clone) SKIP_CLONE=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1"; usage; exit 1 ;;
   esac
@@ -73,12 +76,17 @@ echo "==> Preparing app directory: $APP_DIR"
 sudo mkdir -p "$APP_DIR"
 sudo chown -R "$USER:$USER" "$APP_DIR"
 
-if [[ ! -d "$APP_DIR/.git" ]]; then
-  git clone --branch "$BRANCH" "$REPO" "$APP_DIR"
-else
-  git -C "$APP_DIR" fetch origin "$BRANCH"
-  git -C "$APP_DIR" checkout "$BRANCH"
-  git -C "$APP_DIR" pull origin "$BRANCH"
+if [[ "$SKIP_CLONE" == false ]]; then
+  if [[ ! -d "$APP_DIR/.git" ]]; then
+    git clone --branch "$BRANCH" "$REPO" "$APP_DIR"
+  else
+    git -C "$APP_DIR" fetch origin "$BRANCH"
+    git -C "$APP_DIR" checkout "$BRANCH"
+    git -C "$APP_DIR" pull origin "$BRANCH"
+  fi
+elif [[ ! -d "$APP_DIR" ]]; then
+  echo "ERROR: --skip-clone set but $APP_DIR does not exist. Rsync the repo first."
+  exit 1
 fi
 
 cd "$APP_DIR"

@@ -92,6 +92,7 @@ const pkgPath = path.join(outDir, "package.json");
 if (existsSync(pkgPath)) {
   const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
   delete pkg.type;
+  pkg.scripts = { ...(pkg.scripts ?? {}), start: "node server.js" };
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
 }
 

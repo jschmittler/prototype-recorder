@@ -19,7 +19,13 @@ import {
   type JobStatus,
 } from "@ptw/job-contracts";
 import { getExecutor, ExecutorError } from "@ptw/engine-adapter";
-import { getAIProvider, generateValidatedScript, ScriptGenerationError, type ValidateOptions } from "@ptw/script-generator";
+import {
+  getAIProvider,
+  generateValidatedScript,
+  ScriptGenerationError,
+  validateScript,
+  type ValidateOptions,
+} from "@ptw/script-generator";
 import { ALLOWED_VIEWPORTS, LOG_TAIL_MAX, WORKDIR_ROOT, log } from "./config";
 import type { JobStore } from "./store";
 import type { Storage } from "./storage";
@@ -68,42 +74,68 @@ export async function runPipeline(jobId: string, deps: PipelineDeps): Promise<vo
     await setStatus("PREPARING");
 
     const executor = await getExecutor();
-    const ai = await getAIProvider();
-
-    await setStatus("INSPECTING");
-    const inspection = await executor.inspect({ url: job.url, viewport: dims, workDir, jobId });
-
-    await setStatus("GENERATING_SCRIPT");
     const validateOpts: ValidateOptions = {
       expectedUrl: job.url,
       allowedViewports: ALLOWED_VIEWPORTS,
       maxBytes: LIMITS.scriptBytesMax,
       maxSteps: LIMITS.scriptStepsMax,
     };
-    const gen = await generateValidatedScript(
-      ai,
-      {
-        url: job.url,
-        instructions: job.instructions,
-        viewport: dims,
-        outputBaseName: baseName,
-        targetSeconds: targetSeconds(job.settings),
-        closeIgnore: job.settings.ignoreOverlayText,
-        inspection: {
-          finalUrl: inspection.finalUrl,
-          title: inspection.title,
-          elements: {
-            buttons: inspection.elements.buttons,
-            links: inspection.elements.links,
-            textboxes: inspection.elements.textboxes,
-            tabs: inspection.elements.tabs,
-            headings: inspection.elements.headings,
+
+    let gen: { script: string; tokensIn?: number; tokensOut?: number };
+
+    if (job.scriptOverride?.trim()) {
+      await setStatus("VALIDATING_SCRIPT");
+      const checked = validateScript(job.scriptOverride, validateOpts);
+      if (!checked.ok) {
+        throw new ScriptGenerationError(
+          "The supplied walkthrough script did not pass validation.",
+          checked.errors,
+          job.scriptOverride
+        );
+      }
+      gen = { script: job.scriptOverride, tokensIn: 0, tokensOut: 0 };
+    } else {
+      const ai = await getAIProvider();
+
+      await setStatus("INSPECTING");
+      const inspection = await executor.inspect({ url: job.url, viewport: dims, workDir, jobId });
+
+      await setStatus("GENERATING_SCRIPT");
+      gen = await generateValidatedScript(
+        ai,
+        {
+          url: job.url,
+          instructions: job.instructions,
+          viewport: dims,
+          outputBaseName: baseName,
+          targetSeconds: targetSeconds(job.settings),
+          closeIgnore: job.settings.ignoreOverlayText,
+          inspection: {
+            finalUrl: inspection.finalUrl,
+            title: inspection.title,
+            elements: {
+              buttons: inspection.elements.buttons,
+              links: inspection.elements.links,
+              textboxes: inspection.elements.textboxes,
+              tabs: inspection.elements.tabs,
+              headings: inspection.elements.headings,
+              imgAlts: inspection.elements.imgAlts,
+            },
+            screens: inspection.screens.map((s) => ({
+              label: s.label,
+              buttons: s.buttons,
+              links: s.links,
+              textboxes: s.textboxes,
+              tabs: s.tabs,
+              headings: s.headings,
+              imgAlts: s.imgAlts,
+            })),
+            requiresAuthGuess: inspection.requiresAuthGuess,
           },
-          requiresAuthGuess: inspection.requiresAuthGuess,
         },
-      },
-      validateOpts
-    );
+        validateOpts
+      );
+    }
 
     await setStatus("VALIDATING_SCRIPT");
     const scriptPath = path.join(workDir, `${baseName}.md`);
@@ -136,12 +168,17 @@ export async function runPipeline(jobId: string, deps: PipelineDeps): Promise<vo
       optimizedVideoKey = `${jobId}/${baseName}.vp9.webm`;
       await storage.putFile(optimizedVideoKey, rec.optimizedVideoPath, "video/webm");
     }
+    let posterKey: string | undefined;
+    if (rec.posterPath) {
+      posterKey = `${jobId}/${baseName}.poster.jpg`;
+      await storage.putFile(posterKey, rec.posterPath, "image/jpeg");
+    }
 
     const done = await store.update(jobId, {
       status: "COMPLETED",
       progress: 1,
       completedAt: now(),
-      artifacts: { scriptKey, videoKey, optimizedVideoKey },
+      artifacts: { scriptKey, videoKey, optimizedVideoKey, posterKey },
       metrics: {
         durationSeconds: rec.metrics.durationSeconds,
         fileSizeBytes: rec.metrics.fileSizeBytes,

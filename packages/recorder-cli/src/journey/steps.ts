@@ -28,10 +28,34 @@ import {
 import { moveCursorTo } from "../helpers/cursor.js";
 
 const TYPE_KEYWORDS = new Set(["role", "text", "placeholder", "label", "alt", "testid", "css"]);
+const CLICK_INTENTS = new Set(["close", "dismiss", "home", "back"]);
 
 interface Target {
   candidates: Locator[];
   describe: string;
+}
+
+/** Ordered locators for a bare quoted/regex name (expanded cascade). */
+function bareNameCandidates(page: Page, name: string | RegExp): Locator[] {
+  const cands: Locator[] = [
+    page.getByRole("button", { name }),
+    page.getByRole("link", { name }),
+    page.getByRole("tab", { name }),
+    page.getByRole("menuitem", { name }),
+    page.getByText(name),
+  ];
+  if (typeof name === "string") {
+    cands.push(page.getByLabel(name), page.getByAltText(name));
+    const safe = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    cands.push(page.locator(`[aria-label*="${safe}" i]`));
+    if (/close|dismiss|exit/i.test(name)) {
+      cands.push(
+        page.getByRole("button", { name: /close|dismiss/i }),
+        page.locator('[aria-label*="close" i], [aria-label*="dismiss" i]')
+      );
+    }
+  }
+  return cands;
 }
 
 function tokenName(t: Token): string | RegExp {
@@ -58,16 +82,24 @@ export function durationMs(value: string): number {
   return m[2] === "s" ? Math.round(n * 1000) : Math.round(n);
 }
 
+export interface ExecutorOptions {
+  /** How long to poll for a target before giving up (preflight uses a short value). */
+  resolveTimeoutMs?: number;
+}
+
 export class Executor {
   private pace: number;
+  private resolveTimeout: number;
 
   constructor(
     private page: Page,
     private config: ScriptConfig,
-    private log: (msg: string) => void
+    private log: (msg: string) => void,
+    opts: ExecutorOptions = {}
   ) {
     const p = Number(process.env.PACE);
     this.pace = Number.isFinite(p) && p > 0 ? p : 1;
+    this.resolveTimeout = opts.resolveTimeoutMs ?? 12_000;
   }
 
   private ms(base: number): number {
@@ -109,40 +141,159 @@ export class Executor {
         }
       }
     }
-    // Bare name → smart cascade.
+    // Bare name → expanded smart cascade.
     const name = tokenName(t0);
     return {
       target: {
-        candidates: [
-          page.getByRole("button", { name }),
-          page.getByRole("link", { name }),
-          page.getByRole("tab", { name }),
-          page.getByText(name),
-        ],
-        describe: `"${describeName(t0)}" (button/link/tab/text)`,
+        candidates: bareNameCandidates(page, name),
+        describe: `"${describeName(t0)}" (button/link/tab/menu/text/label/alt)`,
       },
       consumed: 1,
     };
   }
 
-  /** Return the first visible candidate (polling briefly), or the first that exists. */
-  private async pick(target: Target, timeout = 12_000): Promise<Locator> {
+  /** Return the first visible candidate, or null if none found within timeout. */
+  private async pickOptional(target: Target, timeout = 4_000): Promise<Locator | null> {
+    try {
+      return await this.pick(target, timeout);
+    } catch {
+      return null;
+    }
+  }
+
+  private async performClick(target: Target, settleMs: number): Promise<void> {
+    const loc = await this.pick(target);
+    await revealIfNeeded(this.page, loc);
+    await moveAndClick(this.page, loc, { label: target.describe, noScroll: true, settleMs });
+  }
+
+  private async tryPerformClick(target: Target, settleMs: number): Promise<boolean> {
+    const loc = await this.pickOptional(target);
+    if (!loc) {
+      this.log(`   • not present, skipping: ${target.describe}`);
+      return false;
+    }
+    await revealIfNeeded(this.page, loc);
+    await moveAndClick(this.page, loc, { label: target.describe, noScroll: true, settleMs });
+    return true;
+  }
+
+  /** Resolve close/dismiss/home/back without a literal selector. */
+  private async executeClickIntent(intentRaw: string, settleMs: number, optional: boolean): Promise<boolean> {
+    const intent = intentRaw.toLowerCase();
+    if (!CLICK_INTENTS.has(intent)) {
+      throw new Error(`clickIntent: unknown intent "${intentRaw}" (use close, dismiss, home, or back)`);
+    }
+    const label = `intent ${intent}`;
+    try {
+      if (intent === "close" || intent === "dismiss") {
+        await this.closeOverlay();
+        this.log(`   ✓ clicked: ${label}`);
+        return true;
+      }
+      if (intent === "home") {
+        await this.clickHome(settleMs);
+        this.log(`   ✓ clicked: ${label}`);
+        return true;
+      }
+      if (intent === "back") {
+        await this.clickBack(settleMs);
+        this.log(`   ✓ clicked: ${label}`);
+        return true;
+      }
+    } catch (err) {
+      if (optional) {
+        this.log(`   • not present, skipping: ${label}`);
+        return false;
+      }
+      throw err;
+    }
+    return false;
+  }
+
+  /** Logo / home control in the header chrome. */
+  private async clickHome(settleMs: number): Promise<void> {
+    const target: Target = {
+      candidates: [
+        this.page.getByRole("link", { name: /home|logo/i }),
+        this.page.getByRole("button", { name: /home|logo/i }),
+        this.page.locator('[aria-label*="home" i], [aria-label*="logo" i]'),
+        this.page.getByAltText(/logo|home|autodesk/i),
+      ],
+      describe: "intent home (header logo/link)",
+    };
+    const loc = await this.pickOptional(target, 6_000);
+    if (loc) {
+      await revealIfNeeded(this.page, loc);
+      await moveAndClick(this.page, loc, { label: target.describe, noScroll: true, settleMs });
+      return;
+    }
+    const pt = await this.page.evaluate(() => {
+      const nodes = Array.from(document.querySelectorAll('a, button, [role="button"], [role="link"]'));
+      let best: { x: number; y: number; score: number } | null = null;
+      for (const el of nodes) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8 || r.top > 100 || r.left > 280) continue;
+        const text = ((el as HTMLElement).innerText || "").trim();
+        const img = el.querySelector("img");
+        const alt = img?.getAttribute("alt") || "";
+        const aria = el.getAttribute("aria-label") || "";
+        const blob = `${text} ${alt} ${aria}`.toLowerCase();
+        let score = 0;
+        if (r.top < 60) score += 4;
+        if (r.left < 120) score += 3;
+        if (img) score += 2;
+        if (/home|logo|brand/.test(blob)) score += 5;
+        if (score >= 5 && (!best || score > best.score)) {
+          best = { x: r.x + r.width / 2, y: r.y + r.height / 2, score };
+        }
+      }
+      return best;
+    });
+    if (!pt) throw new Error("clickIntent home: no home/logo control found");
+    await moveAndClickPoint(this.page, { x: pt.x, y: pt.y }, "intent home (header)", settleMs);
+  }
+
+  /** Back / previous navigation control. */
+  private async clickBack(settleMs: number): Promise<void> {
+    const target: Target = {
+      candidates: [
+        this.page.getByRole("button", { name: /back|previous|go back/i }),
+        this.page.getByRole("link", { name: /back|previous|go back/i }),
+        this.page.locator('[aria-label*="back" i], [aria-label*="previous" i]'),
+      ],
+      describe: "intent back",
+    };
+    const loc = await this.pick(target, 8_000);
+    await revealIfNeeded(this.page, loc);
+    await moveAndClick(this.page, loc, { label: target.describe, noScroll: true, settleMs });
+  }
+
+  /**
+   * Return the first *visible* candidate. A hidden-but-present element is never
+   * returned: clicking it would only fail later inside moveAndClick, blaming the
+   * wrong step.
+   */
+  private async pick(target: Target, timeout = this.resolveTimeout): Promise<Locator> {
     const deadline = Date.now() + timeout;
+    let existedButHidden = false;
     do {
       for (const c of target.candidates) {
-        if ((await c.count().catch(() => 0)) > 0 && (await c.first().isVisible().catch(() => false))) {
-          return c.first();
+        if ((await c.count().catch(() => 0)) > 0) {
+          if (await c.first().isVisible().catch(() => false)) return c.first();
+          existedButHidden = true;
         }
       }
       await this.page.waitForTimeout(150);
     } while (Date.now() < deadline);
-    for (const c of target.candidates) {
-      if ((await c.count().catch(() => 0)) > 0) return c.first();
-    }
-    throw new Error(`No element found for ${target.describe}`);
+    throw new Error(
+      existedButHidden
+        ? `${target.describe} exists but never became visible`
+        : `No element found for ${target.describe}`
+    );
   }
 
-  private async waitVisible(target: Target, timeout = 15_000): Promise<void> {
+  private async waitVisible(target: Target, timeout = this.resolveTimeout + 3_000): Promise<void> {
     const deadline = Date.now() + timeout;
     do {
       for (const c of target.candidates) {
@@ -153,7 +304,7 @@ export class Executor {
     throw new Error(`Timed out waiting for ${target.describe} to be visible`);
   }
 
-  private async waitHidden(target: Target, timeout = 15_000): Promise<void> {
+  private async waitHidden(target: Target, timeout = this.resolveTimeout + 3_000): Promise<void> {
     const deadline = Date.now() + timeout;
     do {
       let anyVisible = false;
@@ -270,9 +421,30 @@ export class Executor {
         const { target, consumed } = this.resolveTarget(tokens);
         const settleTok = tokens[consumed];
         const settleMs = isDuration(settleTok) ? this.ms(durationMs((settleTok as { value: string }).value)) : this.ms(700);
-        const loc = await this.pick(target);
-        await revealIfNeeded(page, loc);
-        await moveAndClick(page, loc, { label: target.describe, noScroll: true, settleMs });
+        await this.performClick(target, settleMs);
+        return;
+      }
+      case "tryClick": {
+        const { target, consumed } = this.resolveTarget(tokens);
+        const settleTok = tokens[consumed];
+        const settleMs = isDuration(settleTok) ? this.ms(durationMs((settleTok as { value: string }).value)) : this.ms(700);
+        await this.tryPerformClick(target, settleMs);
+        return;
+      }
+      case "clickIntent": {
+        const intentTok = tokens[0];
+        if (!intentTok || intentTok.kind !== "word") throw new Error("clickIntent: expected close|home|back|dismiss");
+        const settleTok = tokens[1];
+        const settleMs = isDuration(settleTok) ? this.ms(durationMs((settleTok as { value: string }).value)) : this.ms(700);
+        await this.executeClickIntent(intentTok.value, settleMs, false);
+        return;
+      }
+      case "tryClickIntent": {
+        const intentTok = tokens[0];
+        if (!intentTok || intentTok.kind !== "word") throw new Error("tryClickIntent: expected close|home|back|dismiss");
+        const settleTok = tokens[1];
+        const settleMs = isDuration(settleTok) ? this.ms(durationMs((settleTok as { value: string }).value)) : this.ms(700);
+        await this.executeClickIntent(intentTok.value, settleMs, true);
         return;
       }
       case "clickIfPresent": {
@@ -294,12 +466,7 @@ export class Executor {
         const perItem = durTok ? this.ms(durationMs((durTok as { value: string }).value)) : this.ms(1000);
         for (const item of listTok.items) {
           const target: Target = {
-            candidates: [
-              page.getByRole("button", { name: item, exact: true }),
-              page.getByRole("button", { name: item }),
-              page.getByRole("tab", { name: item }),
-              page.getByText(item),
-            ],
+            candidates: bareNameCandidates(page, item),
             describe: `each › "${item}"`,
           };
           const loc = await this.pick(target);

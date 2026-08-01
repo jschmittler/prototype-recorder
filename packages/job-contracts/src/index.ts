@@ -127,10 +127,31 @@ export const CreateJobInputSchema = z.object({
   url: SubmittedUrlSchema,
   instructions: z.string().trim().min(LIMITS.instructionsMin).max(LIMITS.instructionsMax),
   settings: JobSettingsSchema.default({}),
+  /** When set, skip AI script generation and use this walkthrough script as-is. */
+  script: z.string().trim().max(LIMITS.scriptBytesMax).optional(),
   /** Client-generated key so double-clicks don't create duplicate jobs. */
   idempotencyKey: z.string().uuid().optional(),
 });
 export type CreateJobInput = z.infer<typeof CreateJobInputSchema>;
+
+/**
+ * Preflight dry-runs a script against the live prototype. Either a ready script
+ * or a brief long enough to generate one from must be supplied.
+ */
+export const PreflightInputSchema = z
+  .object({
+    url: SubmittedUrlSchema,
+    instructions: z.string().trim().max(LIMITS.instructionsMax).default(""),
+    settings: JobSettingsSchema.default({}),
+    script: z.string().trim().max(LIMITS.scriptBytesMax).optional(),
+    /** Let the model rewrite steps that fail the live dry run. */
+    repair: z.boolean().default(true),
+  })
+  .refine((v) => Boolean(v.script) || v.instructions.length >= LIMITS.instructionsMin, {
+    message: `Provide a script, or instructions of at least ${LIMITS.instructionsMin} characters.`,
+    path: ["instructions"],
+  });
+export type PreflightInput = z.infer<typeof PreflightInputSchema>;
 
 /* --------------------------------------------------------------- error model */
 
@@ -214,6 +235,8 @@ export interface JobArtifacts {
   scriptKey?: string;
   videoKey?: string;
   optimizedVideoKey?: string;
+  /** Poster frame used as the thumbnail for a finished walkthrough. */
+  posterKey?: string;
   diagnosticsKey?: string;
 }
 
@@ -244,6 +267,8 @@ export interface Job {
   completedAt?: string;
   expiresAt?: string;
   retryCount: number;
+  /** Pre-supplied walkthrough script (skips AI generation when present). */
+  scriptOverride?: string;
   /** Bounded tail of recent scrubbed progress log lines. */
   logTail?: string[];
 }
@@ -257,12 +282,15 @@ export interface PublicJob {
   stageMessage: string;
   url: string;
   title?: string;
+  instructions: string;
+  settings: JobSettings;
   errorCategory?: ErrorCategory;
   error?: { title: string; explanation: string; nextStep: string };
   metrics: Omit<JobMetrics, "modelTokensIn" | "modelTokensOut">;
   hasVideo: boolean;
   hasOptimizedVideo: boolean;
   hasScript: boolean;
+  hasPoster: boolean;
   createdAt: string;
   completedAt?: string;
   expiresAt?: string;
@@ -278,6 +306,8 @@ export function toPublicJob(job: Job): PublicJob {
     stageMessage: stage?.message ?? "",
     url: job.url,
     title: job.settings.title,
+    instructions: job.instructions,
+    settings: job.settings,
     errorCategory: job.errorCategory,
     error: job.errorCategory ? ERROR_COPY[job.errorCategory] : undefined,
     metrics: {
@@ -290,6 +320,7 @@ export function toPublicJob(job: Job): PublicJob {
     hasVideo: !!job.artifacts.videoKey,
     hasOptimizedVideo: !!job.artifacts.optimizedVideoKey,
     hasScript: !!job.artifacts.scriptKey,
+    hasPoster: !!job.artifacts.posterKey,
     createdAt: job.createdAt,
     completedAt: job.completedAt,
     expiresAt: job.expiresAt,

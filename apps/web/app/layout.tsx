@@ -1,49 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppShell } from "@/components/app/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Prototype Walkthrough",
-  description: "Turn a prototype into a polished walkthrough video.",
+  title: "Frodotyping — small prototypes, long journeys",
+  description:
+    "Turn a prototype link into a narrated walkthrough your stakeholders will actually watch.",
 };
-
-const GITHUB = "https://github.com/jschmittler/prototype-recorder";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">
-        <header className="border-b border-black/5 bg-white/70 backdrop-blur sticky top-0 z-30">
-          <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-[15px]">
-              <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-brand-600 text-white text-sm">▶</span>
-              Prototype Walkthrough
-            </Link>
-            <nav className="flex items-center gap-5 text-sm text-gray-600">
-              <Link href="/create" className="hover:text-gray-900 transition-colors">New project</Link>
-              <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-gray-900 hidden sm:inline transition-colors">GitHub</a>
-              <Link
-                href="/create"
-                className="rounded-lg bg-brand-600 px-3.5 py-2 text-white text-sm hover:bg-brand-700 transition-colors"
-              >
-                Start export
-              </Link>
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-1">{children}</main>
-
-        <footer className="border-t border-black/5 mt-16">
-          <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-gray-500 flex flex-wrap gap-x-8 gap-y-2 justify-between">
-            <span>© {new Date().getFullYear()} Prototype Walkthrough · MIT</span>
-            <div className="flex gap-6">
-              <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-gray-800">Repository</a>
-              <a href={`${GITHUB}/blob/main/PLAYBOOK.md`} target="_blank" rel="noreferrer" className="hover:text-gray-800">Playbook</a>
-              <a href={`${GITHUB}/issues`} target="_blank" rel="noreferrer" className="hover:text-gray-800">Support</a>
-            </div>
-          </div>
-        </footer>
+      <body className="min-h-screen">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -24,6 +24,30 @@ accessible elements:
 }
 visible text (truncated):
 Welcome. Sign In. Products.
+
+===== EXPLORED SCREENS =====
+[
+  {
+    "label": "Products",
+    "url": "https://acme.figma.site/products",
+    "buttons": ["Manage", "Compare"],
+    "links": [],
+    "textboxes": [],
+    "tabs": ["Usage"],
+    "headings": ["All products"],
+    "imgAlts": []
+  },
+  {
+    "label": "Learn",
+    "url": "https://acme.figma.site/learn",
+    "buttons": [],
+    "links": ["Guides"],
+    "textboxes": [],
+    "tabs": [],
+    "headings": ["Learning"],
+    "imgAlts": []
+  }
+]
 `;
 
 describe("parseInspectionReport", () => {
@@ -39,9 +63,27 @@ describe("parseInspectionReport", () => {
     expect(r.visibleText).toContain("Welcome");
   });
 
+  it("extracts the screens explored past the landing page", () => {
+    const r = parseInspectionReport(SAMPLE, "https://acme.figma.site/");
+    expect(r.screens.map((s) => s.label)).toEqual(["Products", "Learn"]);
+    expect(r.screens[0].buttons).toEqual(["Manage", "Compare"]);
+    expect(r.screens[1].headings).toEqual(["Learning"]);
+  });
+
+  it("does not confuse the landing-page element dump with the screens block", () => {
+    const r = parseInspectionReport(SAMPLE, "https://acme.figma.site/");
+    expect(r.elements.buttons).toEqual(["Sign In", "Products"]);
+  });
+
   it("degrades gracefully on a malformed report", () => {
     const r = parseInspectionReport("nonsense", "https://x.figma.site/");
     expect(r.finalUrl).toBe("https://x.figma.site/");
     expect(r.elements.buttons).toEqual([]);
+    expect(r.screens).toEqual([]);
+  });
+
+  it("ignores a screens block that is not valid JSON", () => {
+    const r = parseInspectionReport(SAMPLE.replace('"label": "Products"', '"label": '), "https://acme.figma.site/");
+    expect(r.screens).toEqual([]);
   });
 });

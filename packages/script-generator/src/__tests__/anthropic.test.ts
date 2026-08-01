@@ -19,7 +19,7 @@ const INPUT: GenerateScriptInput = {
   inspection: {
     finalUrl: URL,
     title: "Acme",
-    elements: { buttons: ["Sign In"], links: [], textboxes: [], tabs: [], headings: ["Welcome"] },
+    elements: { buttons: ["Sign In"], links: [], textboxes: [], tabs: [], headings: ["Welcome"], imgAlts: [] },
     requiresAuthGuess: false,
   },
 };
@@ -39,10 +39,11 @@ output: acme-demo
 - hold 3s
 `;
 
-function stub(text: string, stopReason = "end_turn"): MinimalAnthropic {
-  return {
+function stub(text: string, stopReason = "end_turn"): MinimalAnthropic & { lastArgs?: Record<string, unknown> } {
+  const s: MinimalAnthropic & { lastArgs?: Record<string, unknown> } = {
     messages: {
-      async create() {
+      async create(args: unknown) {
+        s.lastArgs = args as Record<string, unknown>;
         return {
           content: [
             { type: "thinking", text: "" },
@@ -54,6 +55,7 @@ function stub(text: string, stopReason = "end_turn"): MinimalAnthropic {
       },
     },
   };
+  return s;
 }
 
 describe("extractScript", () => {
@@ -81,6 +83,55 @@ describe("AnthropicProvider", () => {
     const provider = new AnthropicProvider({ client: stub("", "refusal") });
     await expect(provider.generateScript(INPUT)).rejects.toThrow(/declined/i);
   });
+
+  it("pins temperature and omits thinking so the same brief yields the same script", async () => {
+    AnthropicProvider.temperatureSupported = true;
+    const client = stub(GOOD);
+    await new AnthropicProvider({ client }).generateScript(INPUT);
+    expect(client.lastArgs?.temperature).toBe(0);
+    expect(client.lastArgs?.thinking).toBeUndefined();
+  });
+
+  it("swaps temperature for thinking when explicitly opted in", async () => {
+    AnthropicProvider.temperatureSupported = true;
+    const client = stub(GOOD);
+    await new AnthropicProvider({ client, thinking: true }).generateScript(INPUT);
+    expect(client.lastArgs?.thinking).toEqual({ type: "adaptive" });
+    expect(client.lastArgs?.temperature).toBeUndefined();
+  });
+
+  it("retries without temperature when the model has deprecated it", async () => {
+    AnthropicProvider.temperatureSupported = true;
+    let calls = 0;
+    const client: MinimalAnthropic = {
+      messages: {
+        async create(args: unknown) {
+          calls++;
+          if ((args as { temperature?: number }).temperature !== undefined) {
+            throw new Error("400 `temperature` is deprecated for this model.");
+          }
+          return { content: [{ type: "text", text: GOOD }], stop_reason: "end_turn" };
+        },
+      },
+    };
+    const r = await new AnthropicProvider({ client }).generateScript(INPUT);
+    expect(r.script.startsWith("---")).toBe(true);
+    expect(calls).toBe(2);
+    // The rejection is remembered, so later calls skip the doomed attempt.
+    expect(AnthropicProvider.temperatureSupported).toBe(false);
+  });
+
+  it("does not swallow unrelated API errors", async () => {
+    AnthropicProvider.temperatureSupported = true;
+    const client: MinimalAnthropic = {
+      messages: {
+        async create() {
+          throw new Error("529 overloaded_error");
+        },
+      },
+    };
+    await expect(new AnthropicProvider({ client }).generateScript(INPUT)).rejects.toThrow(/overloaded/);
+  });
 });
 
 describe("buildUserPrompt", () => {
@@ -94,5 +145,43 @@ describe("buildUserPrompt", () => {
     const p = buildUserPrompt({ ...INPUT, previousScript: "bad", validationErrors: ['unknown step "frobnicate"'] });
     expect(p).toContain("FAILED VALIDATION");
     expect(p).toContain("frobnicate");
+  });
+
+  it("lists the controls found on each explored screen", () => {
+    const p = buildUserPrompt({
+      ...INPUT,
+      inspection: {
+        ...INPUT.inspection!,
+        screens: [
+          {
+            label: "Products",
+            buttons: ["Manage"],
+            links: [],
+            textboxes: [],
+            tabs: ["Usage"],
+            headings: ["All products"],
+            imgAlts: [],
+          },
+        ],
+      },
+    });
+    expect(p).toContain("SCREENS REACHED FROM THE LANDING PAGE");
+    expect(p).toContain('after clicking "Products"');
+    expect(p).toContain('"Manage"');
+    expect(p).toContain('"All products"');
+  });
+
+  it("asks for a targeted rewrite when a dry run failed", () => {
+    const p = buildUserPrompt({
+      ...INPUT,
+      previousScript: GOOD,
+      preflightFailures: [
+        { step: 'click "See all products"', error: "No element found", suggestions: ["Products", "Home"] },
+      ],
+    });
+    expect(p).toContain("COULD NOT BE FOUND");
+    expect(p).toContain('click "See all products"');
+    expect(p).toContain('"Products"');
+    expect(p).toContain("keep every step that is not listed here");
   });
 });

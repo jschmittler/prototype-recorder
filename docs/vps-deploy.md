@@ -49,13 +49,26 @@ Wait a few minutes for propagation before HTTPS setup.
 
 ### 3. Run the bootstrap script
 
-SSH into the VPS:
+The GitHub repo is **private**, so the public `curl | bash` one-liner will not work.
+Deploy from your laptop instead (rsync + remote setup):
+
+```bash
+# From your dev machine (repo root)
+bash scripts/vps-deploy-from-local.sh root@YOUR_VPS_IP \
+  --domain app.frodotyping.com
+```
+
+Or SSH into the VPS and clone with a **deploy key** / personal access token:
 
 ```bash
 ssh root@YOUR_VPS_IP
+git clone git@github.com:jschmittler/prototype-recorder-live.git /opt/ptw
+cd /opt/ptw
+sudo bash scripts/vps-setup.sh --domain frodotyping.com --app-dir /opt/ptw
 ```
 
-One-line install:
+**DNS recommendation:** point a subdomain first (`app.frodotyping.com` → VPS IP),
+verify recording works, then cut `frodotyping.com` over from Hostinger.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder-live/main/scripts/vps-setup.sh | bash -s -- \
@@ -63,13 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder-live
   --app-dir /opt/ptw
 ```
 
-Or clone and run locally:
-
-```bash
-git clone https://github.com/jschmittler/prototype-recorder-live.git /opt/ptw
-cd /opt/ptw
-sudo bash scripts/vps-setup.sh --domain frodotyping.com --app-dir /opt/ptw
-```
+*(Only works if the repo is public.)*
 
 The script installs Node 20, FFmpeg, PM2, Playwright Chromium, builds the app,
 and starts it. With `--domain`, it also configures Caddy for HTTPS.

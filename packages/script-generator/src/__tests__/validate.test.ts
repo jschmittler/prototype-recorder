@@ -43,6 +43,20 @@ describe("validateScript", () => {
     }
   });
 
+  it("accepts tryClick and clickIntent verbs", () => {
+    const r = validateScript(
+      good({ extraStep: 'tryClick "Maybe Later" 1s\n- clickIntent close 1s\n- tryClickIntent home' }),
+      OPTS
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects unknown clickIntent values", () => {
+    const r = validateScript(good({ extraStep: "clickIntent frobnicate" }), OPTS);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join(" ")).toMatch(/close, dismiss, home, or back/);
+  });
+
   it("rejects unknown verbs", () => {
     const r = validateScript(good({ extraStep: 'frobnicate "x"' }), OPTS);
     expect(r.ok).toBe(false);

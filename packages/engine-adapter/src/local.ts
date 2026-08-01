@@ -18,12 +18,16 @@ import path from "node:path";
 import {
   ExecutorError,
   type ExecutorProgress,
+  type ExploredScreen,
   type InspectInput,
   type InspectionResult,
+  type PreflightInput,
+  type PreflightResult,
   type RecordInput,
   type RecordResult,
   type WalkthroughExecutor,
 } from "./index";
+import { makePoster } from "./poster";
 
 export interface LocalExecutorOptions {
   /** Path to a prototype-recorder-cli checkout or install (contains bin/). */
@@ -45,6 +49,8 @@ interface SpawnOpts {
   signal?: AbortSignal;
   jobId?: string;
   onLine?: (line: string) => void;
+  /** Exit codes treated as success (defaults to [0]). */
+  okExitCodes?: number[];
 }
 
 export class LocalProcessExecutor implements WalkthroughExecutor {
@@ -78,7 +84,8 @@ export class LocalProcessExecutor implements WalkthroughExecutor {
     await this.spawnEngine(["inspect", input.url], {
       cwd: workDir,
       env: this.restrictedEnv({ HEADLESS: "1", PROTOTYPE_URL: input.url }),
-      timeoutMs: input.timeoutMs ?? 90_000,
+      // Generous: inspection now opens several screens past the landing page.
+      timeoutMs: input.timeoutMs ?? 180_000,
       signal: input.signal,
       jobId: input.jobId,
     });
@@ -119,13 +126,33 @@ export class LocalProcessExecutor implements WalkthroughExecutor {
       );
     }
     const optimized = path.join(input.workDir, "output", `${input.outputBaseName}.vp9.webm`);
+    const metrics = probe(videoPath, input.viewport);
     return {
       videoPath,
       optimizedVideoPath: input.includeOptimizedCopy && fs.existsSync(optimized) ? optimized : undefined,
+      posterPath: makePoster(videoPath, metrics.durationSeconds),
       scriptPath: input.scriptPath,
       diagnosticsDir: input.keepDiagnostics ? path.join(input.workDir, "test-results") : undefined,
-      metrics: probe(videoPath, input.viewport),
+      metrics,
     };
+  }
+
+  async preflight(input: PreflightInput): Promise<PreflightResult> {
+    fs.mkdirSync(input.workDir, { recursive: true });
+    // Exit code 3 means "ran fine, some steps failed" — that is a valid report,
+    // not an engine error, so it is tolerated here.
+    await this.spawnEngine(["preflight", input.scriptPath, "--url", input.url], {
+      cwd: input.workDir,
+      env: this.restrictedEnv({ HEADLESS: "1", PROTOTYPE_URL: input.url }),
+      timeoutMs: input.timeoutMs ?? 180_000,
+      signal: input.signal,
+      jobId: input.jobId,
+      okExitCodes: [0, 3],
+    });
+
+    const reportPath = path.join(input.workDir, "test-results", "preflight-report.json");
+    if (!fs.existsSync(reportPath)) throw new ExecutorError("Preflight produced no report.", "unknown");
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as PreflightResult;
   }
 
   async cancel(jobId: string): Promise<void> {
@@ -177,8 +204,9 @@ export class LocalProcessExecutor implements WalkthroughExecutor {
       child.stdout?.on("data", handle);
       child.stderr?.on("data", handle);
       child.on("error", (e) => finish(() => reject(new ExecutorError(`Engine failed to start: ${e.message}`, "unknown"))));
+      const ok = opts.okExitCodes ?? [0];
       child.on("close", (code) => {
-        if (code === 0) finish(() => resolve());
+        if (code !== null && ok.includes(code)) finish(() => resolve());
         else finish(() => reject(new ExecutorError(`Engine exited with code ${code}.`, "unknown")));
       });
     });
@@ -214,6 +242,56 @@ function firstMatch(text: string, re: RegExp): string | undefined {
   return m ? m[1].trim() : undefined;
 }
 
+/** Pull the balanced JSON array that follows a label. */
+function extractJsonArray(text: string, afterLabel: string): unknown[] {
+  const i = text.indexOf(afterLabel);
+  if (i < 0) return [];
+  const start = text.indexOf("[", i);
+  if (start < 0) return [];
+  let depth = 0;
+  let inString = false;
+  for (let j = start; j < text.length; j++) {
+    const ch = text[j];
+    if (inString) {
+      if (ch === "\\") j++;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "[") depth++;
+    else if (ch === "]") {
+      depth--;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(text.slice(start, j + 1));
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+    }
+  }
+  return [];
+}
+
+function toScreen(raw: unknown): ExploredScreen | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.label !== "string") return null;
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  return {
+    label: o.label,
+    url: typeof o.url === "string" ? o.url : "",
+    buttons: strings(o.buttons),
+    links: strings(o.links),
+    textboxes: strings(o.textboxes),
+    tabs: strings(o.tabs),
+    headings: strings(o.headings),
+    imgAlts: strings(o.imgAlts),
+  };
+}
+
 export function parseInspectionReport(text: string, url: string): InspectionResult {
   const classification = (extractBalancedJson(text, "classification:") ?? {}) as Record<string, unknown>;
   const elements = (extractBalancedJson(text, "accessible elements:") ?? {}) as Record<string, string[]>;
@@ -229,6 +307,9 @@ export function parseInspectionReport(text: string, url: string): InspectionResu
       headings: elements.headings ?? [],
       imgAlts: (elements as Record<string, string[]>).images ?? [],
     },
+    screens: extractJsonArray(text, "===== EXPLORED SCREENS =====")
+      .map(toScreen)
+      .filter((s): s is ExploredScreen => s !== null),
     visibleText,
     requiresAuthGuess: Boolean(classification.looksLikeSSOorAuth),
     inIframe: Boolean(classification.prototypeInIframe),

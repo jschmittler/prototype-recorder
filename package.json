@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "build": "npm run build:hostinger -w prototype-recorder-web && node scripts/prepare-hostinger.mjs",
     "build:vps": "npm run build -w prototype-recorder-web",
-    "start": "node hostinger-dist/server.js",
+    "start": "node hostinger-entry.cjs",
     "start:vps": "node scripts/vps-server.cjs",
     "lint": "eslint . || true",
     "format": "prettier --write .",

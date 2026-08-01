@@ -74,7 +74,7 @@ export function JobView({ id }: { id: string }) {
   if (status === "COMPLETED" && job) {
     return <DeliveryHub job={job} id={id} />;
   }
-  if (status === "FAILED") return <FailureView job={job} category={errorCat} logs={logs} />;
+  if (status === "FAILED") return <FailureView jobId={id} job={job} category={errorCat} logs={logs} />;
 
   const pipelineStages = STAGES.filter((s) => s.key !== "COMPLETED").map((s) => ({
     key: s.key,
@@ -105,7 +105,7 @@ export function JobView({ id }: { id: string }) {
       <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
         <div className="studio-panel p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-center gap-8">
-            <ProgressRing progress={progress} size={152} variant="studio" />
+            <ProgressRing progress={progress} size={152} />
             <div className="flex-1 w-full text-center sm:text-left">
               <p className="text-xs font-semibold uppercase tracking-wider text-brand-400">Current stage</p>
               <h2 className="mt-1 text-2xl font-semibold text-white">{stageLabel}</h2>
@@ -186,7 +186,7 @@ function DeliveryHub({ job, id }: { job: PublicJob; id: string }) {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-studio-500">Transcript</h2>
               <span className="text-[10px] text-studio-600">Descript-style script panel</span>
             </div>
-            <ScriptPanel jobId={id} hasScript={job.hasScript} variant="studio" />
+            <ScriptPanel jobId={id} hasScript={job.hasScript} />
           </div>
 
           {job.expiresAt && (
@@ -206,7 +206,6 @@ function DeliveryHub({ job, id }: { job: PublicJob; id: string }) {
             width={job.metrics.width}
             height={job.metrics.height}
             fileSizeBytes={job.metrics.fileSizeBytes}
-            variant="studio"
           />
         </div>
       </div>
@@ -215,14 +214,17 @@ function DeliveryHub({ job, id }: { job: PublicJob; id: string }) {
 }
 
 function FailureView({
+  jobId,
   job,
   category,
   logs,
 }: {
+  jobId: string;
   job: PublicJob | null;
   category: string | null;
   logs: string[];
 }) {
+  const retryHref = `/create?from=${encodeURIComponent(jobId)}`;
   const copy = job?.error ?? {
     title: "Render failed",
     explanation: "An unexpected error occurred during export.",
@@ -245,13 +247,13 @@ function FailureView({
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/create"
+            href={retryHref}
             className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-500 transition-colors"
           >
             Try again
           </Link>
           <Link
-            href="/create"
+            href={retryHref}
             className="rounded-lg border border-studio-700 px-5 py-2.5 text-sm font-medium text-studio-200 hover:bg-studio-800 transition-colors"
           >
             Edit brief

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { FakeExecutor, type ExecutorProgress } from "../index";
+import { makePoster } from "../poster";
 
 describe("FakeExecutor", () => {
   it("inspects and returns deterministic elements", async () => {
@@ -37,6 +38,38 @@ describe("FakeExecutor", () => {
     expect(res.metrics.height).toBe(900);
     expect(phases).toContain("recording");
     expect(phases).toContain("optimizing");
+
+    // The poster is best-effort: assert it is a real JPEG when ffmpeg produced
+    // one, rather than requiring ffmpeg to exist on every machine.
+    if (res.posterPath) {
+      const bytes = fs.readFileSync(res.posterPath);
+      expect(bytes.length).toBeGreaterThan(0);
+      // JPEG SOI marker.
+      expect(bytes[0]).toBe(0xff);
+      expect(bytes[1]).toBe(0xd8);
+    }
+
+    fs.rmSync(workDir, { recursive: true, force: true });
+  });
+});
+
+describe("makePoster", () => {
+  it("returns undefined instead of throwing when ffmpeg is missing", () => {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "ptw-poster-"));
+    const video = path.join(workDir, "clip.webm");
+    fs.writeFileSync(video, "not-a-real-video");
+
+    expect(makePoster(video, 6, "definitely-not-ffmpeg-binary")).toBeUndefined();
+
+    fs.rmSync(workDir, { recursive: true, force: true });
+  });
+
+  it("does not return a path when ffmpeg fails on an unreadable file", () => {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "ptw-poster-"));
+    const video = path.join(workDir, "clip.webm");
+    fs.writeFileSync(video, "not-a-real-video");
+
+    expect(makePoster(video, 6)).toBeUndefined();
 
     fs.rmSync(workDir, { recursive: true, force: true });
   });

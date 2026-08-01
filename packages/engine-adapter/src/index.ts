@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { makePoster } from "./poster";
 
 /* --------------------------------------------------------------------- types */
 
@@ -25,10 +26,25 @@ export interface AccessibleElements {
   imgAlts: string[];
 }
 
+/** A screen reached by clicking a primary nav control on the landing page. */
+export interface ExploredScreen {
+  /** The control that was clicked to get here. */
+  label: string;
+  url: string;
+  buttons: string[];
+  links: string[];
+  textboxes: string[];
+  tabs: string[];
+  headings: string[];
+  imgAlts: string[];
+}
+
 export interface InspectionResult {
   finalUrl: string;
   title: string;
   elements: AccessibleElements;
+  /** Screens beyond the landing page, so later steps aren't authored blind. */
+  screens: ExploredScreen[];
   visibleText: string;
   /** Heuristic: the page looks like it redirected to a login/SSO screen. */
   requiresAuthGuess: boolean;
@@ -68,9 +84,44 @@ export interface RecordInput {
 export interface RecordResult {
   videoPath: string;
   optimizedVideoPath?: string;
+  /** Representative frame for thumbnails. Absent when ffmpeg is unavailable. */
+  posterPath?: string;
   scriptPath: string;
   diagnosticsDir?: string;
   metrics: { durationSeconds: number; fileSizeBytes: number; width: number; height: number };
+}
+
+export interface PreflightInput {
+  workDir: string;
+  /** Absolute path to the validated script.md written into workDir. */
+  scriptPath: string;
+  url: string;
+  viewport: { width: number; height: number };
+  jobId?: string;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+export interface PreflightStepResult {
+  section: string;
+  line: number;
+  verb: string;
+  raw: string;
+  status: "ok" | "failed" | "skipped";
+  cascaded?: boolean;
+  error?: string;
+  suggestions?: string[];
+}
+
+export interface PreflightResult {
+  url: string;
+  finalUrl: string;
+  totalSteps: number;
+  checkedSteps: number;
+  okCount: number;
+  failedCount: number;
+  durationSeconds: number;
+  results: PreflightStepResult[];
 }
 
 export interface ExecutorProgress {
@@ -106,6 +157,8 @@ export class ExecutorError extends Error {
 export interface WalkthroughExecutor {
   inspect(input: InspectInput): Promise<InspectionResult>;
   record(input: RecordInput): Promise<RecordResult>;
+  /** Dry-run a script against the live page (no video) to verify every target. */
+  preflight(input: PreflightInput): Promise<PreflightResult>;
   cancel(jobId: string): Promise<void>;
 }
 
@@ -143,10 +196,47 @@ export class FakeExecutor implements WalkthroughExecutor {
         headings: ["Welcome", "Explore products"],
         imgAlts: ["Logo"],
       },
+      screens: [
+        {
+          label: "Products",
+          url: `${input.url}#products`,
+          buttons: ["Manage", "Compare"],
+          links: [],
+          textboxes: [],
+          tabs: ["Overview", "Benefits"],
+          headings: ["Products"],
+          imgAlts: [],
+        },
+      ],
       visibleText: "Welcome. Sign In. Products. Learn. Community.",
       requiresAuthGuess: false,
       inIframe: false,
       redirects: [],
+    };
+  }
+
+  async preflight(input: PreflightInput): Promise<PreflightResult> {
+    await sleep(this.opts.stepMs ?? 250, input.signal);
+    const steps = fs.existsSync(input.scriptPath)
+      ? fs
+          .readFileSync(input.scriptPath, "utf8")
+          .split("\n")
+          .map((l, i) => ({ text: l.trim(), line: i + 1 }))
+          .filter((l) => /^[-*]\s+\S/.test(l.text))
+      : [];
+    const results: PreflightStepResult[] = steps.map(({ text, line }) => {
+      const raw = text.replace(/^[-*]\s+/, "");
+      return { section: "Walkthrough", line, verb: raw.split(/\s+/)[0], raw, status: "ok" as const };
+    });
+    return {
+      url: input.url,
+      finalUrl: input.url,
+      totalSteps: results.length,
+      checkedSteps: results.length,
+      okCount: results.length,
+      failedCount: 0,
+      durationSeconds: 0.3,
+      results,
     };
   }
 
@@ -180,6 +270,7 @@ export class FakeExecutor implements WalkthroughExecutor {
     return {
       videoPath,
       optimizedVideoPath,
+      posterPath: made ? makePoster(videoPath, durationSeconds, this.opts.ffmpegPath) : undefined,
       scriptPath: input.scriptPath,
       diagnosticsDir: input.keepDiagnostics ? path.join(input.workDir, "test-results") : undefined,
       metrics: {

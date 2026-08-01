@@ -2,10 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Frodotyping surface system.
+ *
+ * Surfaces are separated by small lightness steps plus a hairline border, so the
+ * interface reads as layered rather than outlined. Motion durations are tokens
+ * so every component shares one timing language.
+ */
 :root {
-  --bg: #fbfbfd;
-  --fg: #0b0b0f;
-  --muted: #6b7280;
+  --bg: #08090d;
+  --fg: #e4e8ef;
+  --muted: #7d8698;
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-panel: 320ms;
+  --motion-page: 420ms;
+  --motion-intro: 1400ms;
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html,
@@ -19,39 +33,134 @@ body {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+
+  /* One focus treatment everywhere, always visible, never clipped. */
+  :focus-visible {
+    outline: 2px solid theme("colors.signal.400");
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: theme("colors.signal.500");
+    color: white;
+  }
+
+  /* Quiet scrollbars that match the surfaces rather than the OS. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.ink.700") transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: theme("colors.ink.700");
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: theme("colors.ink.600");
+    background-clip: content-box;
+  }
 }
 
 @layer components {
-  .input {
-    @apply w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-[0.925rem] transition-shadow;
+  /* ---------------------------------------------------------------- surfaces */
+  .panel {
+    @apply rounded-xl border border-ink-700 bg-ink-850;
   }
-  .input:focus {
-    @apply outline-none border-brand-500 ring-[3px] ring-brand-500/15;
+  .panel-quiet {
+    @apply rounded-xl border border-ink-800 bg-ink-900;
   }
-  .card {
-    @apply rounded-2xl border border-black/5 bg-white shadow-soft;
+  .hairline {
+    @apply border-ink-700;
   }
+
+  /* ------------------------------------------------------------------ inputs */
+  .field {
+    @apply w-full rounded-lg border border-ink-600 bg-ink-950 px-3 py-2.5 text-sm text-ink-100;
+    transition: border-color var(--motion-fast) var(--ease-settle),
+      background-color var(--motion-fast) var(--ease-settle);
+  }
+  .field::placeholder {
+    @apply text-ink-500;
+  }
+  .field:hover:not(:disabled) {
+    @apply border-ink-500;
+  }
+  .field:focus {
+    @apply border-signal-500 outline-none;
+  }
+  .field:disabled {
+    @apply cursor-not-allowed text-ink-500 opacity-60;
+  }
+
+  /* ----------------------------------------------------------------- buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium;
+    transition: background-color var(--motion-fast) var(--ease-settle),
+      border-color var(--motion-fast) var(--ease-settle),
+      color var(--motion-fast) var(--ease-settle),
+      transform var(--motion-fast) var(--ease-settle);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+  .btn-primary {
+    @apply bg-signal-600 text-white;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-signal-500;
+  }
+  .btn-secondary {
+    @apply border border-ink-600 bg-transparent text-ink-100;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply border-ink-500 bg-ink-800;
+  }
+  .btn-ghost {
+    @apply text-ink-300;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply bg-ink-800 text-ink-100;
+  }
+
+  /* ------------------------------------------------------------------ labels */
+  .label-tech {
+    @apply font-mono text-[10px] uppercase tracking-label text-ink-400;
+  }
+  .kbd {
+    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-ink-600 bg-ink-900 px-1.5 font-mono text-[10px] text-ink-300;
+  }
+
+  /* Legacy aliases kept so unmigrated markup still renders correctly. */
   .studio-panel {
-    @apply rounded-xl;
-    border: 1px solid theme("colors.studio.800");
-    background-color: color-mix(in srgb, theme("colors.studio.900") 80%, transparent);
+    @apply panel;
   }
   .studio-input {
-    @apply w-full rounded-lg px-3 py-2.5 text-sm transition-colors;
-    border: 1px solid theme("colors.studio.700");
-    background-color: theme("colors.studio.950");
-    color: theme("colors.studio.100");
+    @apply field;
   }
-  .studio-input::placeholder {
-    color: theme("colors.studio.500");
+  .input {
+    @apply field;
   }
-  .studio-input:focus {
-    @apply outline-none ring-2 ring-brand-500/20;
-    border-color: theme("colors.brand.500");
+  .card {
+    @apply panel;
   }
 }
 
 @layer utilities {
+  /* Faint cartographic grid. Used once, behind the intro — not everywhere. */
+  .bg-grid {
+    background-image: linear-gradient(theme("colors.ink.700") 1px, transparent 1px),
+      linear-gradient(90deg, theme("colors.ink.700") 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
   .animate-pulse-soft {
     animation: pulse-soft 2s ease-in-out infinite;
   }
@@ -61,17 +170,19 @@ body {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
-    opacity: 0.85;
-    transform: scale(0.97);
+    opacity: 0.6;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

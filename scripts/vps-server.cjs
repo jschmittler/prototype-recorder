@@ -11,6 +11,28 @@ const root = path.join(__dirname, "..");
 const webRoot = path.join(root, "apps/web");
 const buildId = path.join(webRoot, ".next/BUILD_ID");
 
+/** Load repo-root .env when PM2 env_file is unavailable (simple KEY=VALUE parser). */
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
+loadEnvFile(path.join(root, ".env"));
+
 if (!fs.existsSync(buildId)) {
   console.error("[vps] Missing production build. Run: npm run build:vps");
   process.exit(1);

@@ -13,7 +13,7 @@ close_ignore: []                            # text of persistent chrome whose X 
   STEP VOCABULARY
   ───────────────
   Targets (in priority order — prefer the earlier forms):
-    "Sign In"                     bare name → tried as button, link, tab, then visible text
+    "Sign In"                     bare name → button, link, tab, menuitem, text, label, alt, aria-label
     role button "Products"        explicit ARIA role + accessible name
     text "Welcome back"           visible text (substring, case-insensitive)
     placeholder "Search"          form field by placeholder
@@ -31,6 +31,11 @@ close_ignore: []                            # text of persistent chrome whose X 
     click <target> [1.2s]         move cursor + click once; optional trailing settle duration
     selectTab <target> [1s]       alias for click (reads better for tabs)
     clickIfPresent <target>       click only if visible (e.g. an optional cookie banner)
+    tryClick <target> [1.2s]      click if found; otherwise skip (optional / wrap-up steps)
+    clickIntent close|home|back|dismiss [1.2s]
+                                  smart intent: close=dismiss modal, home=header logo, back=nav back
+    tryClickIntent close|home|back|dismiss [1.2s]
+                                  same as clickIntent but skips if nothing matches
     clickEach ["A","B","C"] [1s]  click several names in order; optional per-item settle
     clickInRow "Fusion" "Manage"  click the control named "Manage" inside the smallest
                                   element also containing "Fusion" (row-scoped click when

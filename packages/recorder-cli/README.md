@@ -80,8 +80,9 @@ Installed globally or run via `npx`, the same engine is available as a command
 (outputs are written to your **current directory**):
 
 ```bash
-prototype-recorder-cli record  scripts/acme.md --url https://acme.figma.site [--headed] [--pace 0.9]
-prototype-recorder-cli inspect https://acme.figma.site [--headed]
+prototype-recorder-cli record    scripts/acme.md --url https://acme.figma.site [--headed] [--pace 0.9]
+prototype-recorder-cli preflight scripts/acme.md --url https://acme.figma.site
+prototype-recorder-cli inspect   https://acme.figma.site [--headed]
 prototype-recorder-cli auth        # headed Figma auth setup (only for gated URLs)
 prototype-recorder-cli setup       # install the Chromium browser
 prototype-recorder-cli list        # list bundled scripts
@@ -90,6 +91,43 @@ prototype-recorder-cli help | version
 
 To package and share this with a team (standalone repo and/or npm/npx), see
 **`DISTRIBUTION.md`**.
+
+### Checking a script before you record
+
+`preflight` walks the script against the live prototype without recording video,
+so a full journey is verified in seconds rather than minutes. Clicks still fire —
+later screens are unreachable otherwise — but the cursor animation, presentation
+pauses, and video capture are skipped.
+
+```bash
+prototype-recorder-cli preflight scripts/acme.md
+```
+
+Each step is reported as resolved, not found, or skipped (for the optional verbs
+`clickIfPresent`, `tryClick`, and `tryClickIntent`). A step that fails does not
+abort the run: it is listed alongside the interactive controls that *were* on
+screen, ranked by similarity, so the correct target is usually visible in the
+output. A machine-readable copy lands in `test-results/preflight-report.json`.
+
+The exit code is `0` when everything resolves and `3` when any step fails, which
+makes it usable as a CI gate.
+
+### Inspection depth
+
+`inspect` does not stop at the landing page. After dumping it, the primary nav
+controls are clicked in turn and each resulting screen is recorded under an
+`===== EXPLORED SCREENS =====` block. Controls that lead nowhere new (logos,
+home links, locale switchers) are detected by comparing the URL and leading
+heading, and don't count toward the budget.
+
+```bash
+prototype-recorder-cli inspect https://acme.figma.site --screens 6   # default 6
+prototype-recorder-cli inspect https://acme.figma.site --screens 0   # landing page only
+```
+
+This matters because a script author — human or model — otherwise has to guess
+at everything past the first click. Exploration is capped at ten screens and a
+60-second budget.
 
 ## Authoring a `script.md`
 

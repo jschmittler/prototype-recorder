@@ -5,3 +5,4 @@ export type { JobStore } from "./store";
 export type { Storage } from "./storage";
 export type { Queue } from "./queue";
 export { runPipeline } from "./pipeline";
+export { runPreflight, type PreflightOutcome } from "./preflight";

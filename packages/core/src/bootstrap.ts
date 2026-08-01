@@ -124,6 +124,7 @@ export async function createJob(raw: unknown, ownerId: string): Promise<CreateRe
     url: input.url,
     instructions: input.instructions,
     settings: input.settings,
+    ...(input.script ? { scriptOverride: input.script } : {}),
     artifacts: {},
     metrics: {},
     createdAt: new Date().toISOString(),
@@ -156,7 +157,7 @@ export interface ArtifactRef {
 
 export async function artifactRef(
   id: string,
-  kind: "video" | "optimized" | "script",
+  kind: "video" | "optimized" | "script" | "poster",
   ownerId?: string
 ): Promise<ArtifactRef | null> {
   const j = await (await getStore()).get(id);
@@ -168,5 +169,7 @@ export async function artifactRef(
     return { key: a.optimizedVideoKey, contentType: "video/webm", filename: `${id}.vp9.webm` };
   if (kind === "script" && a.scriptKey)
     return { key: a.scriptKey, contentType: "text/markdown; charset=utf-8", filename: `${id}.md` };
+  if (kind === "poster" && a.posterKey)
+    return { key: a.posterKey, contentType: "image/jpeg", filename: `${id}.jpg` };
   return null;
 }

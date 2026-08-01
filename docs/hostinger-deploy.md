@@ -12,21 +12,19 @@ requires a VPS — see [vps-deploy.md](./vps-deploy.md).
 | **Node version** | **20.x** |
 | **Root directory** | `./` |
 | **Build command** | `npm run build` |
-| **Start command** | `node server.js` |
-| **Output directory** | `hostinger-dist` |
-| **Entry file** | `server.js` |
+| **Start command** | `node hostinger-entry.cjs` |
+| **Output directory** | `.` |
+| **Entry file** | `hostinger-entry.cjs` |
 | **Package manager** | npm |
 
-Use **`node server.js`** for Start command (not `npm run start`). At runtime
-Hostinger’s working directory is the output folder, which already contains
-`server.js`.
+Use **output `.`** (repo root), not `hostinger-dist`. The build creates
+`hostinger-dist/` on disk; a tracked root entry (`hostinger-entry.cjs`) loads it.
+Using `hostinger-dist` alone as output often deploys an empty folder because build
+artifacts are not in git.
 
-Do **not** use `npm run build:vps` or `npm run build:web` alone — those skip the
-`hostinger-dist` bundle.
+Do **not** use `npm run build:vps` or `npm run build:web` alone.
 
 ## Environment variables (demo)
-
-**Replace your current env vars with these** for the shared-hosting demo:
 
 ```
 APP_MODE=demo
@@ -39,29 +37,26 @@ NODE_ENV=production
 LOG_LEVEL=info
 ```
 
-Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY` unless you move to a VPS.
-`local-process` requires Playwright, which shared hosting cannot run.
+Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY`.
 
 ## After deploy
 
-1. Build log must end with: `[hostinger] deploy bundle ready at .../hostinger-dist/server.js`
-2. Open **Runtime logs** — you should see `Next.js` starting.
-3. Visit `/api/health` — expect `"executor":"fake"` and `"ok":true`.
-4. Click **Running → Restart** if you still see 503 from the CDN.
+1. Build log ends with `[hostinger] bundle files: server.js, .next/BUILD_ID, node_modules/next/package.json, .hostinger-deploy`
+2. Runtime logs show `Next.js` starting
+3. `/api/health` returns `"ok":true`
+4. **Running → Restart** if CDN still shows 503
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| Build succeeds but deploy fails / 503 | Check `.gitignore` is not excluding `hostinger-dist/server.js` (use `/server.js` only at repo root) |
-| `Cannot find module .../server.js` | Output = `hostinger-dist`, entry = `server.js`, start = `node server.js` |
-| Build: `standalone server missing` | Build command must be `npm run build` |
-| Jobs fail at PREPARING | Set `EXECUTOR=fake` (not `local-process`) |
+| Build OK, site 503 | Output = `.`, entry = `hostinger-entry.cjs`, start = `node hostinger-entry.cjs` |
+| `Missing hostinger-dist/server.js` | Build command must be `npm run build` |
+| Jobs fail at PREPARING | `EXECUTOR=fake` |
 
 ## Redeploy checklist
 
 ```bash
 git push origin main   # prototype-recorder-live
-# hPanel → Deployments → Redeploy
-# hPanel → Running → Restart
+# hPanel → update settings → Redeploy → Restart
 ```

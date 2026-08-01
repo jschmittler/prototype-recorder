@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { VIEWPORTS } from "@ptw/job-contracts";
 import {
+  dropFailedSteps,
   FakeAIProvider,
   generateValidatedScript,
   ScriptGenerationError,
@@ -32,6 +33,7 @@ const INPUT: GenerateScriptInput = {
       textboxes: ["Search"],
       tabs: ["Overview"],
       headings: ["Welcome"],
+      imgAlts: ["Acme logo"],
     },
     requiresAuthGuess: false,
   },
@@ -100,5 +102,38 @@ describe("generateValidatedScript", () => {
     await generateValidatedScript(spy, INPUT, OPTS, 2);
     expect(seen[0]).toBeUndefined();
     expect(seen[1]?.length).toBeGreaterThan(0);
+  });
+});
+
+describe("dropFailedSteps", () => {
+  const script = `${goodScript.trimEnd()}
+- click "Nope"
+- hold 2s
+`;
+
+  it("removes only the steps that failed the dry run", () => {
+    const out = dropFailedSteps(script, [
+      { step: 'click "Nope"', error: "not found", suggestions: [] },
+    ]);
+    expect(out).not.toContain('click "Nope"');
+    expect(out).toContain('waitFor text "Welcome"');
+    expect(out).toContain("hold 2s");
+  });
+
+  it("leaves the script alone when nothing matches", () => {
+    const out = dropFailedSteps(script, [
+      { step: 'click "Absent"', error: "not found", suggestions: [] },
+    ]);
+    expect(out.trim()).toBe(script.trim());
+  });
+
+  it("lets the fake provider repair a script it is handed", async () => {
+    const r = await new FakeAIProvider().generateScript({
+      ...INPUT,
+      previousScript: script,
+      preflightFailures: [{ step: 'click "Nope"', error: "not found", suggestions: ["Products"] }],
+    });
+    expect(r.script).not.toContain('click "Nope"');
+    expect(r.script).toContain('waitFor text "Welcome"');
   });
 });

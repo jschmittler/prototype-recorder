@@ -67,6 +67,8 @@ function parseCloseIgnore(raw: string | undefined): string[] {
   return [t.replace(/^["']|["']$/g, "")];
 }
 
+const CLICK_INTENTS = new Set(["close", "dismiss", "home", "back"]);
+
 /** Minimal per-verb arity so obviously-malformed output is caught + repaired. */
 function checkArity(verb: string, raw: string): string | null {
   const args = tokenize(raw).slice(1);
@@ -74,12 +76,19 @@ function checkArity(verb: string, raw: string): string | null {
     "click",
     "selectTab",
     "clickIfPresent",
+    "tryClick",
     "waitFor",
     "waitForHidden",
     "scrollTo",
     "fill",
   ]);
   if (needsTarget.has(verb) && args.length === 0) return `"${verb}" needs a target`;
+  if ((verb === "clickIntent" || verb === "tryClickIntent") && args.length === 0) {
+    return `"${verb}" needs close|home|back|dismiss`;
+  }
+  if ((verb === "clickIntent" || verb === "tryClickIntent") && args[0]?.kind === "word" && !CLICK_INTENTS.has(args[0].value.toLowerCase())) {
+    return `"${verb}" intent must be close, dismiss, home, or back`;
+  }
   if (verb === "type" && !args.some((a) => a.kind === "string")) return `"type" needs a "text" argument`;
   if (verb === "fill" && !args.some((a) => a.kind === "string")) return `"fill" needs a "text" argument`;
   if (verb === "clickEach" && !args.some((a) => a.kind === "list")) return `"clickEach" needs a [list]`;

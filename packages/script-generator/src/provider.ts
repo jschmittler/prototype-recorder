@@ -5,6 +5,17 @@
  * powers the vertical slice and tests and always emits a valid script.
  */
 
+export interface ScreenSummary {
+  /** The control clicked on the landing page to reach this screen. */
+  label: string;
+  buttons: string[];
+  links: string[];
+  textboxes: string[];
+  tabs: string[];
+  headings: string[];
+  imgAlts: string[];
+}
+
 export interface InspectionSummary {
   finalUrl: string;
   title: string;
@@ -14,8 +25,19 @@ export interface InspectionSummary {
     textboxes: string[];
     tabs: string[];
     headings: string[];
+    imgAlts: string[];
   };
+  /** Screens beyond the landing page, so later steps aren't authored blind. */
+  screens?: ScreenSummary[];
   requiresAuthGuess: boolean;
+}
+
+/** A step that could not be resolved when the script was dry-run. */
+export interface PreflightFailure {
+  step: string;
+  error: string;
+  /** Controls that were actually on screen, closest match first. */
+  suggestions: string[];
 }
 
 export interface GenerateScriptInput {
@@ -29,6 +51,8 @@ export interface GenerateScriptInput {
   /** Present on repair attempts. */
   previousScript?: string;
   validationErrors?: string[];
+  /** Present when repairing a script that failed a live dry run. */
+  preflightFailures?: PreflightFailure[];
 }
 
 export interface GenerateScriptResult {
@@ -68,7 +92,7 @@ export function buildDeterministicScript(input: GenerateScriptInput): string {
     steps.push("", "## 3. Explore a tab", `- click "${tab.replace(/"/g, "")}" 1s`);
   }
   steps.push("", "## 4. Survey", "- scrollToBottom", "- pause 1s", "- scrollToTop");
-  steps.push("", "## 5. End", "- hold 3s");
+  steps.push("", "## 5. End", "- closeOverlay", "- tryClickIntent home", "- hold 3s");
 
   return fm.join("\n") + steps.join("\n") + "\n";
 }
@@ -77,11 +101,33 @@ function firstLine(s: string): string {
   return (s.split(/[.\n]/)[0] || "").trim();
 }
 
+/**
+ * Drop the steps a dry run could not resolve. The deterministic stand-in for
+ * what the model does on a repair pass: broken steps go away, the rest is kept
+ * verbatim, so the fake path converges on a script that actually runs.
+ */
+export function dropFailedSteps(script: string, failures: PreflightFailure[]): string {
+  const broken = new Set(failures.map((f) => f.step.trim()));
+  return (
+    script
+      .split("\n")
+      .filter((line) => {
+        const m = line.trim().match(/^[-*]\s+(.*)$/);
+        return !m || !broken.has(m[1].trim());
+      })
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n") + ""
+  );
+}
+
 /** Deterministic provider for local dev, the slice, and tests. */
 export class FakeAIProvider implements AIProvider {
   readonly name = "fake";
   async generateScript(input: GenerateScriptInput): Promise<GenerateScriptResult> {
-    const script = buildDeterministicScript(input);
+    const script =
+      input.previousScript && input.preflightFailures?.length
+        ? dropFailedSteps(input.previousScript, input.preflightFailures)
+        : buildDeterministicScript(input);
     return { script, tokensIn: 0, tokensOut: script.length };
   }
 }
