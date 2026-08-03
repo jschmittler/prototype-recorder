@@ -57,6 +57,6 @@ Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY`.
 ## Redeploy checklist
 
 ```bash
-git push origin main   # prototype-recorder-live
+git push origin main   # prototype-recorder
 # hPanel → update settings → Redeploy → Restart
 ```

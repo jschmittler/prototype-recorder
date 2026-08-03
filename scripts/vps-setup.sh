@@ -2,7 +2,7 @@
 # Prototype Walkthrough — single VPS bootstrap (Ubuntu 22.04/24.04).
 #
 # Usage (on a fresh VPS as root or sudo user):
-#   curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder-live/main/scripts/vps-setup.sh | bash -s -- \
+#   curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder/main/scripts/vps-setup.sh | bash -s -- \
 #     --domain frodotyping.com \
 #     --app-dir /opt/ptw
 #
@@ -13,7 +13,7 @@ set -euo pipefail
 
 DOMAIN=""
 APP_DIR="/opt/ptw"
-REPO="https://github.com/jschmittler/prototype-recorder-live.git"
+REPO="https://github.com/jschmittler/prototype-recorder.git"
 BRANCH="main"
 SKIP_APT=false
 SKIP_CLONE=false
@@ -23,7 +23,7 @@ usage() {
   echo "Options:"
   echo "  --domain DOMAIN     Public hostname (enables Caddy HTTPS). Optional."
   echo "  --app-dir PATH      Install directory (default: /opt/ptw)"
-  echo "  --repo URL          Git remote (default: prototype-recorder-live)"
+  echo "  --repo URL          Git remote (default: prototype-recorder)"
   echo "  --branch NAME       Git branch (default: main)"
   echo "  --skip-apt          Skip apt packages (Node/Caddy already installed)"
   echo "  --skip-clone        Skip git clone/pull (app already rsync'd to --app-dir)"
@@ -90,6 +90,10 @@ elif [[ ! -d "$APP_DIR" ]]; then
 fi
 
 cd "$APP_DIR"
+
+if [[ -d .git ]]; then
+  git rev-parse HEAD > .deploy-version
+fi
 
 if [[ ! -f .env ]]; then
   cp .env.vps.example .env

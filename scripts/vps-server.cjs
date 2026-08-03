@@ -33,6 +33,11 @@ function loadEnvFile(filePath) {
 
 loadEnvFile(path.join(root, ".env"));
 
+const deployVersionFile = path.join(root, ".deploy-version");
+if (!process.env.APP_VERSION && fs.existsSync(deployVersionFile)) {
+  process.env.APP_VERSION = fs.readFileSync(deployVersionFile, "utf8").trim();
+}
+
 if (!fs.existsSync(buildId)) {
   console.error("[vps] Missing production build. Run: npm run build:vps");
   process.exit(1);
@@ -61,6 +66,7 @@ if (fs.existsSync(reqFilesPath)) {
 }
 
 console.log(`[vps] webRoot=${webRoot}`);
+console.log(`[vps] APP_VERSION=${process.env.APP_VERSION ?? "unknown"}`);
 console.log(`[vps] ENGINE_DIR=${process.env.ENGINE_DIR}`);
 console.log(`[vps] EXECUTOR=${process.env.EXECUTOR ?? "fake"}`);
 console.log(`[vps] PORT=${currentPort}`);

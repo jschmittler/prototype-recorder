@@ -10,6 +10,7 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
+    version: process.env.APP_VERSION ?? "development",
     appMode: process.env.APP_MODE ?? "demo",
     aiProvider,
     anthropicConfigured,

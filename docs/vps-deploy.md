@@ -62,7 +62,7 @@ Or SSH into the VPS and clone with a **deploy key** / personal access token:
 
 ```bash
 ssh root@YOUR_VPS_IP
-git clone git@github.com:jschmittler/prototype-recorder-live.git /opt/ptw
+git clone git@github.com:jschmittler/prototype-recorder.git /opt/ptw
 cd /opt/ptw
 sudo bash scripts/vps-setup.sh --domain frodotyping.com --app-dir /opt/ptw
 ```
@@ -71,7 +71,7 @@ sudo bash scripts/vps-setup.sh --domain frodotyping.com --app-dir /opt/ptw
 verify recording works, then cut `frodotyping.com` over from Hostinger.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder-live/main/scripts/vps-setup.sh | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/jschmittler/prototype-recorder/main/scripts/vps-setup.sh | bash -s -- \
   --domain frodotyping.com \
   --app-dir /opt/ptw
 ```

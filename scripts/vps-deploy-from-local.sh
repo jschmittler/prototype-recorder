@@ -54,7 +54,28 @@ if [[ -z "$SSH_TARGET" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REVISION="$(git -C "$ROOT" rev-parse HEAD)"
+BRANCH="$(git -C "$ROOT" branch --show-current)"
+REMOTE_URL="$(git -C "$ROOT" remote get-url origin)"
+
+if [[ "$BRANCH" != "main" ]]; then
+  echo "ERROR: deploys must come from canonical main (current: $BRANCH)"
+  exit 1
+fi
+
+if [[ "$REMOTE_URL" != "https://github.com/jschmittler/prototype-recorder.git" &&
+      "$REMOTE_URL" != "git@github.com:jschmittler/prototype-recorder.git" ]]; then
+  echo "ERROR: origin is not the canonical repository: $REMOTE_URL"
+  exit 1
+fi
+
+if [[ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]]; then
+  echo "ERROR: tracked files are modified; commit or restore them before deploying"
+  exit 1
+fi
+
 echo "==> Syncing $ROOT -> $SSH_TARGET:$APP_DIR"
+echo "==> Canonical version: $REVISION"
 
 ssh "$SSH_TARGET" "mkdir -p '$APP_DIR'"
 
@@ -70,9 +91,12 @@ rsync -avz --delete \
   --exclude hostinger-dist \
   --exclude storage \
   --exclude .git \
+  --exclude /.deploy-version \
   --exclude /.env \
   --exclude apps/web/.env \
   "$ROOT/" "$SSH_TARGET:$APP_DIR/"
+
+ssh "$SSH_TARGET" "printf '%s\\n' '$REVISION' > '$APP_DIR/.deploy-version'"
 
 SETUP_ARGS=(--app-dir "$APP_DIR" --skip-clone)
 if [[ -n "$DOMAIN" ]]; then
