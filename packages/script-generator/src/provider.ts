@@ -1,7 +1,7 @@
 /**
  * AIProvider abstraction — lets the model implementation change (hosted
- * Anthropic key, future BYOK, or a deterministic fake) without touching job
- * logic. The real AnthropicProvider lands in Phase 3; the FakeAIProvider here
+ * OpenAI key, future BYOK, or a deterministic fake) without touching job
+ * logic. The real OpenAIProvider lands in Phase 3; the FakeAIProvider here
  * powers the vertical slice and tests and always emits a valid script.
  */
 
@@ -134,17 +134,17 @@ export class FakeAIProvider implements AIProvider {
 
 /**
  * Select the AI provider from the environment:
- *   AI_PROVIDER=anthropic  -> real Anthropic (requires ANTHROPIC_API_KEY)
+ *   AI_PROVIDER=openai     -> real OpenAI (requires OPENAI_API_KEY)
  *   otherwise              -> FakeAIProvider (default; slice + tests)
- * AnthropicProvider is imported lazily so the SDK isn't loaded on the fake path.
+ * OpenAIProvider is imported lazily so the SDK isn't loaded on the fake path.
  */
 export async function getAIProvider(): Promise<AIProvider> {
-  if ((process.env.AI_PROVIDER ?? "fake") === "anthropic") {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is not configured (required for AI_PROVIDER=anthropic).");
+  if ((process.env.AI_PROVIDER ?? "fake") === "openai") {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured (required for AI_PROVIDER=openai).");
     }
-    const { AnthropicProvider } = await import("./anthropic");
-    return new AnthropicProvider();
+    const { OpenAIProvider } = await import("./openai");
+    return new OpenAIProvider();
   }
   return new FakeAIProvider();
 }

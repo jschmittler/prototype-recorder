@@ -38,12 +38,13 @@ cursor, smooth scrolling) and previewable/downloadable on the result page.
 
 ### 2b. Real AI script generation
 
-Add your Anthropic key to `apps/web/.env` to have the model write the script:
+Add your OpenAI key to `apps/web/.env` to have the model write the script:
 
 ```bash
-AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-# ANTHROPIC_MODEL=claude-sonnet-5   # optional: cheaper than the default claude-opus-4-8
+AI_PROVIDER=openai
+OPENAI_API_KEY=your-key-here
+OPENAI_MODEL=gpt-5.6-sol
+OPENAI_REASONING_EFFORT=medium
 ```
 
 ## Notes

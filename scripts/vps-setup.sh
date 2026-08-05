@@ -100,7 +100,7 @@ if [[ ! -f .env ]]; then
   sed -i "s|ENGINE_DIR=.*|ENGINE_DIR=$APP_DIR/packages/recorder-cli|" .env
   sed -i "s|STORAGE_DIR=.*|STORAGE_DIR=$APP_DIR/storage|" .env
   echo ""
-  echo "!! Created $APP_DIR/.env — edit ANTHROPIC_API_KEY before going live !!"
+  echo "!! Created $APP_DIR/.env — edit OPENAI_API_KEY before going live !!"
   echo ""
 fi
 
@@ -151,7 +151,7 @@ echo " Logs    : pm2 logs ptw"
 echo " Restart : pm2 restart ptw"
 echo ""
 echo " Next steps:"
-echo "  1. Edit $APP_DIR/.env — set ANTHROPIC_API_KEY"
+echo "  1. Edit $APP_DIR/.env — set OPENAI_API_KEY"
 echo "  2. pm2 restart ptw"
 if [[ -n "$DOMAIN" ]]; then
   echo "  3. Visit https://$DOMAIN"

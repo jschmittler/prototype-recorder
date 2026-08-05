@@ -23,7 +23,7 @@ Upgrade later with Postgres, Redis, and a dedicated worker when you need scale.
 
 1. **A VPS** with Ubuntu 22.04 or 24.04, **4 GB RAM** recommended (2 GB minimum, one recording at a time).
 2. **A domain** (e.g. `frodotyping.com`) — optional but recommended for HTTPS.
-3. **Anthropic API key** for script generation (`AI_PROVIDER=anthropic`).
+3. **OpenAI API key** for script generation (`AI_PROVIDER=openai`).
 
 ## Quick setup (~30 minutes)
 
@@ -90,7 +90,7 @@ nano /opt/ptw/.env
 Set:
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=your-key-here
 ```
 
 Then restart:
@@ -111,8 +111,8 @@ Expected:
 {
   "ok": true,
   "executor": "local-process",
-  "aiProvider": "anthropic",
-  "anthropicConfigured": true
+  "aiProvider": "openai",
+  "openaiConfigured": true
 }
 ```
 
@@ -135,15 +135,16 @@ See [`.env.vps.example`](../.env.vps.example). Key settings:
 ```
 EXECUTOR=local-process
 ENGINE_DIR=/opt/ptw/packages/recorder-cli
-AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=...
+AI_PROVIDER=openai
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5.6-sol
 JOB_STORE=memory
 QUEUE_DRIVER=memory
 STORAGE_DRIVER=local
 MAX_CONCURRENT_JOBS=1
 ```
 
-Use `AI_PROVIDER=fake` to skip Anthropic during testing (scripts will be synthetic).
+Use `AI_PROVIDER=fake` to skip OpenAI during testing (scripts will be synthetic).
 
 ## Moving from Hostinger shared Node.js
 
