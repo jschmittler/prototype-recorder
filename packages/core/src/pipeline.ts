@@ -195,7 +195,7 @@ export async function runPipeline(jobId: string, deps: PipelineDeps): Promise<vo
     });
     log("pipeline", `${jobId} COMPLETED (${toPublicJob(done).metrics.durationSeconds}s)`);
   } catch (err) {
-    if (err instanceof Error && /ANTHROPIC_API_KEY|not configured/i.test(err.message))
+    if (err instanceof Error && /OPENAI_API_KEY|not configured/i.test(err.message))
       return fail("SERVICE_CONFIG", err.message);
     if (err instanceof ScriptGenerationError) return fail("INVALID_SCRIPT", err.validationErrors.join("; "));
     if (err instanceof ExecutorError) {

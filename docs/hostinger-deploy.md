@@ -37,7 +37,7 @@ NODE_ENV=production
 LOG_LEVEL=info
 ```
 
-Remove `EXECUTOR=local-process` and `ANTHROPIC_API_KEY`.
+Remove `EXECUTOR=local-process` and `OPENAI_API_KEY`.
 
 ## After deploy
 

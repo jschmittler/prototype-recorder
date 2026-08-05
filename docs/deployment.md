@@ -21,12 +21,12 @@ Production selects the real adapters:
 ```
 JOB_STORE=postgres   QUEUE_DRIVER=redis   STORAGE_DRIVER=s3
 DATABASE_URL=...     REDIS_URL=...         S3_ENDPOINT/REGION/BUCKET/keys...
-AI_PROVIDER=anthropic  ANTHROPIC_API_KEY=...   # or fake
+AI_PROVIDER=openai  OPENAI_API_KEY=...   # or fake
 EXECUTOR=local-process ENGINE_DIR=/path/to/prototype-recorder-cli   # or fake
 MAX_CONCURRENT_JOBS=2  JOB_RETENTION_HOURS=72  URL_ALLOWLIST=
 ```
 
-Keep `ANTHROPIC_API_KEY` and S3 credentials in a secrets manager — never in the
+Keep `OPENAI_API_KEY` and S3 credentials in a secrets manager — never in the
 image or client.
 
 ## Local full stack (Docker Compose)

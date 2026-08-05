@@ -4,7 +4,7 @@
 #
 # The stack runs with the REAL product adapters (Postgres + Redis/BullMQ + S3),
 # and the FAKE recorder/AI by default so it works without the engine or a key.
-# Set AI_PROVIDER=anthropic (+ ANTHROPIC_API_KEY) and wire the engine for real output.
+# Set AI_PROVIDER=openai (+ OPENAI_API_KEY) and wire the engine for real output.
 services:
   postgres:
     image: postgres:16-alpine
@@ -77,8 +77,10 @@ services:
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-sol}
+      OPENAI_MAX_OUTPUT_TOKENS: ${OPENAI_MAX_OUTPUT_TOKENS:-8000}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-medium}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_started }
@@ -89,7 +91,7 @@ services:
     build: { context: ., dockerfile: docker/worker.Dockerfile }
     environment:
       # Inherit the shared app env, then run the REAL recorder in the worker.
-      # (AI stays fake until ANTHROPIC_API_KEY is available — set AI_PROVIDER=anthropic then.)
+      # (AI stays fake until OPENAI_API_KEY is available — set AI_PROVIDER=openai then.)
       <<: *appenv
       EXECUTOR: local-process
       ENGINE_DIR: /app/packages/recorder-cli
